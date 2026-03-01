@@ -79,6 +79,27 @@ if(NOT DBoW2_FOUND)
   FetchContent_MakeAvailable(DBoW2)
 endif()
 
+# GTSAM (optional, for global map)
+if(SVO_BUILD_GLOBAL_MAP)
+  find_package(GTSAM QUIET)
+  if(NOT GTSAM_FOUND)
+    find_package(Boost REQUIRED)
+    set(GTSAM_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(GTSAM_BUILD_EXAMPLES_ALWAYS OFF CACHE BOOL "" FORCE)
+    set(GTSAM_BUILD_UNSTABLE OFF CACHE BOOL "" FORCE)
+    set(GTSAM_BUILD_PYTHON OFF CACHE BOOL "" FORCE)
+    set(GTSAM_INSTALL_MATLAB_TOOLBOX OFF CACHE BOOL "" FORCE)
+    set(GTSAM_WITH_TBB OFF CACHE BOOL "" FORCE)
+    set(GTSAM_USE_SYSTEM_EIGEN ON CACHE BOOL "" FORCE)
+    FetchContent_Declare(gtsam
+      GIT_REPOSITORY https://github.com/borglab/gtsam.git
+      GIT_TAG        4.2
+      GIT_SHALLOW    TRUE
+    )
+    FetchContent_MakeAvailable(gtsam)
+  endif()
+endif()
+
 # Third-party vendored libraries
 add_subdirectory(third_party/minkindr)
 add_subdirectory(third_party/eigen_checks)

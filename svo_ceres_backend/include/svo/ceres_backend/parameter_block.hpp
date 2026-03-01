@@ -62,7 +62,7 @@ class ParameterBlock
   ParameterBlock()
       : id_(0)
       , fixed_(false)
-      , local_parameterization_ptr_(nullptr)
+      , manifold_ptr_(nullptr)
   {}
 
   /// \brief Trivial destructor.
@@ -140,17 +140,17 @@ class ParameterBlock
    * @brief Set which local parameterisation object to use.
    * @param localParameterizationPtr The local parameterisation object to use.
    */
-  virtual void setLocalParameterizationPtr(
-      const ceres::LocalParameterization* localParameterizationPtr)
+  virtual void setManifoldPtr(
+      const ceres::Manifold* manifoldPtr)
   {
-    local_parameterization_ptr_ = localParameterizationPtr;
+    manifold_ptr_ = manifoldPtr;
   }
   /**
-   * @brief The local parameterisation object to use.
+   * @brief The manifold object to use.
    */
-  virtual const ceres::LocalParameterization* localParameterizationPtr() const
+  virtual const ceres::Manifold* manifoldPtr() const
   {
-    return local_parameterization_ptr_;
+    return manifold_ptr_;
   }
   /// @}
   /// @brief Return parameter block type as string
@@ -161,8 +161,8 @@ class ParameterBlock
   uint64_t id_;
   /// @brief Whether or not this should be optimised at all (ceres::problem::setFixed)
   bool fixed_;
-  /// @brief The local parameterisation object to use.
-  const ceres::LocalParameterization* local_parameterization_ptr_;
+  /// @brief The manifold object to use.
+  const ceres::Manifold* manifold_ptr_;
 };
 
 }  // namespace ceres_backend

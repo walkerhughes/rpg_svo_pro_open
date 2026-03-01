@@ -55,7 +55,7 @@ Map::Map()
     : residual_counter_(0)
 {
   ceres::Problem::Options problemOptions;
-  problemOptions.local_parameterization_ownership =
+  problemOptions.manifold_ownership =
       ceres::Ownership::DO_NOT_TAKE_OWNERSHIP;
   problemOptions.loss_function_ownership =
       ceres::Ownership::DO_NOT_TAKE_OWNERSHIP;
@@ -314,7 +314,7 @@ bool Map::addParameterBlock(
       problem_->AddParameterBlock(parameter_block->parameters(),
                                   parameter_block->dimension(),
                                   &homogeneous_point_local_parameterization_);
-      parameter_block->setLocalParameterizationPtr(
+      parameter_block->setManifoldPtr(
           &homogeneous_point_local_parameterization_);
       break;
     }
@@ -323,7 +323,7 @@ bool Map::addParameterBlock(
       problem_->AddParameterBlock(parameter_block->parameters(),
                                   parameter_block->dimension(),
                                   &pose_local_parameterization_);
-      parameter_block->setLocalParameterizationPtr(&pose_local_parameterization_);
+      parameter_block->setManifoldPtr(&pose_local_parameterization_);
       break;
     }
     default:
@@ -336,9 +336,9 @@ bool Map::addParameterBlock(
 
   /*const ceres_backend::LocalParamizationAdditionalInterfaces* ptr =
       dynamic_cast<const ceres_backend::LocalParamizationAdditionalInterfaces*>(
-      parameter_block->localParameterizationPtr());
+      parameter_block->manifoldPtr());
   if(ptr)
-    std::cout<<"verify local size "<< parameter_block->localParameterizationPtr()->LocalSize() << " = "<<
+    std::cout<<"verify local size "<< parameter_block->manifoldPtr()->TangentSize() << " = "<<
             int(ptr->verify(parameter_block->parameters()))<<
             std::endl;*/
 
@@ -685,20 +685,20 @@ bool Map::resetParameterization(uint64_t parameter_block_id,
   return true;
 }
 
-// Set the (local) parameterisation of a parameter block.
-bool Map::setParameterization(
+// Set the manifold of a parameter block.
+bool Map::setManifold(
     uint64_t parameter_block_id,
-    ceres::LocalParameterization* local_parameterization)
+    ceres::Manifold* manifold)
 {
   if (!parameterBlockExists(parameter_block_id))
   {
     return false;
   }
-  problem_->SetParameterization(
+  problem_->SetManifold(
       id_to_parameter_block_map_.find(parameter_block_id)->second->parameters(),
-      local_parameterization);
+      manifold);
   id_to_parameter_block_map_.find(parameter_block_id)->second
-      ->setLocalParameterizationPtr(local_parameterization);
+      ->setManifoldPtr(manifold);
   return true;
 }
 

@@ -1,37 +1,12 @@
-project(svo_vio_common)
-cmake_minimum_required(VERSION 2.8.3)
-
-find_package(catkin_simple REQUIRED)
-catkin_simple(ALL_DEPS_REQUIRED)
-
-list(APPEND catkin_LIBRARIES)
-
-#############
-# LIBRARIES #
-#############
-set(HEADERS
-  include/svo/vio_common/logging.hpp
-  include/svo/vio_common/matrix_operations.hpp
-  include/svo/vio_common/matrix.hpp
-  include/svo/vio_common/test_utils.hpp
-  include/svo/vio_common/backend_types.hpp
-  )
-
-set(SOURCES
-  src/vio_common.cpp
-  src/test_utils.cpp
-  )
-
-cs_add_library(${PROJECT_NAME} ${SOURCES} ${HEADERS})
-
-
-##########
-# GTESTS #
-##########
-
-
-##########
-# EXPORT #
-##########
-cs_install()
-cs_export()
+file(GLOB SVO_VIO_COMMON_SRC src/*.cpp)
+add_library(svo_vio_common ${SVO_VIO_COMMON_SRC})
+add_library(svo::vio_common ALIAS svo_vio_common)
+target_include_directories(svo_vio_common PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/svo_common/include>
+  $<INSTALL_INTERFACE:include>
+)
+target_link_libraries(svo_vio_common
+  PUBLIC Eigen3::Eigen minkindr vikit_common vikit_cameras
+  PRIVATE svo_compiler_flags glog::glog
+)

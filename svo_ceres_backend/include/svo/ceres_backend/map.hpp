@@ -304,21 +304,21 @@ class Map
    * @param[in] local_parameterization Give it an actual local parameterisation object.
    * @return True on success.
    */
-  bool setParameterization(
+  bool setManifold(
       uint64_t parameter_block_id,
-      ceres::LocalParameterization* local_parameterization);
+      ceres::Manifold* manifold);
 
   /**
-   * @brief Set the (local) parameterisation of a parameter block.
+   * @brief Set the manifold of a parameter block.
    * @param[in] parameter_block The pointer to the parameter block in question.
-   * @param[in] local_parameterization Give it an actual local parameterisation object.
+   * @param[in] manifold Give it an actual manifold object.
    * @return True on success.
    */
-  bool setParameterization(
+  bool setManifold(
       std::shared_ptr<ceres_backend::ParameterBlock> parameter_block,
-      ceres::LocalParameterization* local_parameterization)
+      ceres::Manifold* manifold)
   {
-    return setParameterization(parameter_block->id(), local_parameterization);
+    return setManifold(parameter_block->id(), manifold);
   }
 
   /// @}

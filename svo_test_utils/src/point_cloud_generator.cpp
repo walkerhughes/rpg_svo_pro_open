@@ -2,6 +2,8 @@
 #include <svo/test_utils/test_utils.h>
 #include <vikit/sample.h>
 #include <fstream>
+#include <algorithm>
+#include <random>
 
 namespace svo {
 namespace test_utils {
@@ -50,7 +52,7 @@ FromFilePCG::FromFilePCG(const std::string& filename)
 
 std::vector<Vector3d> FromFilePCG::generatePointCloud(size_t /*num_points*/)
 {
-  std::random_shuffle(points_.begin(), points_.end());
+  std::shuffle(points_.begin(), points_.end(), std::mt19937{std::random_device{}()});
   return points_;
 }
 

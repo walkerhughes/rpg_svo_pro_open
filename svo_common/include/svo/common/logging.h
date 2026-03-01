@@ -7,14 +7,6 @@
 # include <oal/logfile/enable_logging_macros.hpp>
 #endif
 
-#ifdef SVO_USE_ROS
-# include <ros/console.h>
-# define SVO_DEBUG_STREAM(x) ROS_DEBUG_STREAM(x)
-# define SVO_INFO_STREAM(x) ROS_INFO_STREAM(x)
-# define SVO_WARN_STREAM(x) ROS_WARN_STREAM(x)
-# define SVO_WARN_STREAM_THROTTLE(rate, x) ROS_WARN_STREAM_THROTTLE(rate, x)
-# define SVO_ERROR_STREAM(x) ROS_ERROR_STREAM(x)
-#else
 # ifdef LUCY_LOGGING
 #   define SVO_INFO_STREAM(x) {std::stringstream ss; ss << x; LOGI("%s", ss.str().c_str()); }
 #   define SVO_WARN_STREAM(x) {std::stringstream ss; ss << x; LOGW("%s", ss.str().c_str()); }
@@ -41,4 +33,3 @@
         SVO_WARN_STREAM(x); \
       } \
     } while(0)
-#endif

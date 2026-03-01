@@ -8,7 +8,6 @@
 #include <svo/vio_common/backend_types.hpp>
 
 #include "svo/ceres_backend/estimator.hpp"
-#include "svo/ceres_backend_publisher.hpp"
 
 namespace svo
 {
@@ -169,19 +168,6 @@ public:
   void getAllActiveKeyframes(std::vector<FramePtr>* keyframes) override;
 
   /**
-   * @brief Make a publisher node for the backend
-   * @param[in]   nh_private Node handle to be used to publish
-   * @param[out]  publisher Publisher handle, shared with frontend for
-   *              benchmarking purposes.
-   */
-  void makePublisher(const ros::NodeHandle& nh_private,
-                     std::shared_ptr<CeresBackendPublisher>& publisher)
-  {
-    publisher_.reset(new CeresBackendPublisher(nh_private, backend_.getMap()));
-    publisher = publisher_;
-  }
-
-  /**
    * @brief Set the IMU in backend
    * @param imu_handler Shared ImuHandler with frontend
    */
@@ -311,7 +297,6 @@ protected:
 
   // visualization
   ViNodeState last_state_;
-  CeresBackendPublisher::Ptr publisher_;
 
   // loop closing
   std::mutex w_T_correction_mut_;

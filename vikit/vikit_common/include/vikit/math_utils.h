@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdlib> // size_t, fabs
+#include <cassert>
 #define _USE_MATH_DEFINES // for M_PI
 #include <cmath>   // sin, cos
 #include <Eigen/Core>

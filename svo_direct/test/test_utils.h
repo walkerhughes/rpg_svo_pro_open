@@ -16,9 +16,11 @@
 #include <glog/logging.h>
 #include <Eigen/Core>
 #include <opencv2/opencv.hpp>
-#include <ros/package.h>
-#include <vikit/params_helper.h>
 #include <svo/common/camera.h>
+
+#ifndef SVO_TEST_DATA_DIR
+#define SVO_TEST_DATA_DIR "."
+#endif
 
 #include <svo/common/frame.h>
 
@@ -129,30 +131,25 @@ private:
 inline std::string getDatasetDir()
 {
   const char* env_dir = std::getenv("SVO_DATASET_DIR");
-  std::string dataset_dir(ros::package::getPath("svo")+"/test/data");
   if(env_dir != NULL)
-    dataset_dir = std::string(env_dir);
-  return dataset_dir;
+    return std::string(env_dir);
+  return std::string(SVO_TEST_DATA_DIR) + "/test/data";
 }
 
 inline std::string getTestDataDir()
 {
-#if 1
-  return std::string(ros::package::getPath("svo")+"/test/data");
-#else
   const char* env_dir = std::getenv("SVO_DATASET_DIR");
-  return std::string(env_dir);
-#endif
+  if(env_dir != NULL)
+    return std::string(env_dir);
+  return std::string(SVO_TEST_DATA_DIR) + "/test/data";
 }
 
 inline std::string getTraceDir()
 {
-#if 1
-  std::string default_dir(ros::package::getPath("svo")+"/test/results");
-  return vk::getParam<std::string>("svo/trace_dir", default_dir);
-#else
+  const char* env_dir = std::getenv("SVO_TRACE_DIR");
+  if(env_dir != NULL)
+    return std::string(env_dir);
   return "/tmp";
-#endif
 }
 
 inline Eigen::Vector3d generateRandomPoint(double max_depth, double min_depth)

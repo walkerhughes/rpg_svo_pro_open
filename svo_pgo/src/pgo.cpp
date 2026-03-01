@@ -77,10 +77,10 @@ void Pgo::addSequentialConstraintToPgoProblem(const Transformation t_be,
     seq_constraint_ids_.push_back(res);
     VLOG(40) << "Sequential constraint added for frame " << constraint.id_begin
              << " and " << constraint.id_end;
-    problem_.SetParameterization(pose_begin_iter->second.q.coeffs().data(),
-                                 quaternion_local_parameterization_);
-    problem_.SetParameterization(pose_end_iter->second.q.coeffs().data(),
-                                 quaternion_local_parameterization_);
+    problem_.SetManifold(pose_begin_iter->second.q.coeffs().data(),
+                                 quaternion_manifold_);
+    problem_.SetManifold(pose_end_iter->second.q.coeffs().data(),
+                                 quaternion_manifold_);
   }
   else
   {
@@ -132,10 +132,10 @@ void Pgo::addLoopConstraintToPgoProblem(const Transformation t_be,
 
     VLOG(40) << "Loop constraint added for frame " << constraint.id_begin
              << " and " << constraint.id_end;
-    problem_.SetParameterization(pose_begin_iter->second.q.coeffs().data(),
-                                 quaternion_local_parameterization_);
-    problem_.SetParameterization(pose_end_iter->second.q.coeffs().data(),
-                                 quaternion_local_parameterization_);
+    problem_.SetManifold(pose_begin_iter->second.q.coeffs().data(),
+                                 quaternion_manifold_);
+    problem_.SetManifold(pose_end_iter->second.q.coeffs().data(),
+                                 quaternion_manifold_);
 
     /* Set the query frame constant and solve the problem */
     problem_.SetParameterBlockConstant(pose_begin_iter->second.p.data());
@@ -207,10 +207,10 @@ void Pgo::addConstraint(const Transformation& t_be, const int& frame_id_b,
       pose_end_iter->second.q.coeffs().data());
   VLOG(40) << "Sequential constraint added for frame " << constraint.id_begin
            << " and " << constraint.id_end;
-  problem_.SetParameterization(pose_begin_iter->second.q.coeffs().data(),
-                               quaternion_local_parameterization_);
-  problem_.SetParameterization(pose_end_iter->second.q.coeffs().data(),
-                               quaternion_local_parameterization_);
+  problem_.SetManifold(pose_begin_iter->second.q.coeffs().data(),
+                       quaternion_manifold_);
+  problem_.SetManifold(pose_end_iter->second.q.coeffs().data(),
+                       quaternion_manifold_);
 }
 
 void Pgo::solve()

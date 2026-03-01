@@ -1,3 +1,5 @@
+#include <cstdlib>
+
 // svo
 #include <svo/test_utils/synthetic_dataset.h>
 #include <svo/common/frame.h>
@@ -24,7 +26,7 @@ cv::Mat CannyThreshold(cv::Mat& src_gray,int lowThreshold = 20, int ratio = 3, i
 int main(int argc, char **argv)
 {
   // Load dataset.
-  std::string dataset_dir = ros::package::getPath("rpg_datasets")+"/rpg_vfr_pinhole";
+  std::string dataset_dir = std::string(std::getenv("RPG_DATASETS_DIR") ? std::getenv("RPG_DATASETS_DIR") : "rpg_datasets")+"/rpg_vfr_pinhole";
   svo::test_utils::SyntheticDataset dataset(dataset_dir, 0, 0);
 
   svo::DetectorOptions options;

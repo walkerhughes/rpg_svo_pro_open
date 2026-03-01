@@ -2,7 +2,7 @@
 #include <aslam/common/memory.h>
 #include <aslam/common/numdiff-jacobian-tester.h>
 #include <eigen-checks/gtest.h>
-#include <ros/package.h>
+#include <cstdlib>
 #include <svo/common/camera.h>
 #include <svo/common/frame.h>
 #include <svo/common/seed.h>
@@ -85,7 +85,7 @@ TEST(TestDepthEstimation, testBearing)
 
 TEST(TestDepthEstimation, DISABLED_testDataset)
 {
-  std::string dataset_dir = ros::package::getPath("rpg_datasets")+"/rpg_vfr_pinhole";
+  std::string dataset_dir = std::string(std::getenv("RPG_DATASETS_DIR") ? std::getenv("RPG_DATASETS_DIR") : "rpg_datasets")+"/rpg_vfr_pinhole";
   CHECK(!dataset_dir.empty());
   svo::test_utils::SyntheticDataset dataset(dataset_dir, 0, 0);
 

@@ -26,7 +26,7 @@ double stdVec(const std::vector<double>& v)
 
   std::vector<double> diff(v.size());
   std::transform(v.begin(), v.end(), diff.begin(),
-                 std::bind2nd(std::minus<double>(), mean));
+                 [mean](double x){ return x - mean; });
   double sq_sum = std::inner_product(diff.begin(), diff.end(), diff.begin(), 0.0);
   double stdev = std::sqrt(sq_sum / v.size());
 

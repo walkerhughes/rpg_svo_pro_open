@@ -60,7 +60,7 @@ namespace ceres_backend {
 /// dx[0] - dx[2] translation
 /// dx[3] - dx[5] axis angle perturbation
 class PoseLocalParameterization :
-    public ceres::LocalParameterization,
+    public ceres::Manifold,
     public LocalParamizationAdditionalInterfaces
 {
  public:
@@ -77,19 +77,24 @@ class PoseLocalParameterization :
   virtual bool Plus(const double* x, const double* delta,
                     double* x_plus_delta) const;
 
-  /// \brief Computes the minimal difference between a variable x and a
-  ///        perturbed variable x_plus_delta.
+  /// \brief Computes the minimal difference between y and x.
+  /// ceres::Manifold::Minus signature: Minus(y, x, y_minus_x)
+  /// @param[in] y Perturbed variable.
   /// @param[in] x Variable.
-  /// @param[in] x_plus_delta Perturbed variable.
-  /// @param[out] delta minimal difference.
+  /// @param[out] y_minus_x Minimal difference.
   /// \return True on success.
-  virtual bool Minus(const double* x, const double* x_plus_delta,
-                     double* delta) const;
+  virtual bool Minus(const double* y, const double* x,
+                     double* y_minus_x) const;
 
   /// \brief The jacobian of Plus(x, delta) w.r.t delta at delta = 0.
   /// @param[in] x Variable.
   /// @param[out] jacobian The Jacobian.
-  virtual bool ComputeJacobian(const double* x, double* jacobian) const;
+  virtual bool PlusJacobian(const double* x, double* jacobian) const;
+
+  /// \brief The jacobian of Minus(y, x) w.r.t y at y = x.
+  /// @param[in] x Variable.
+  /// @param[out] jacobian The Jacobian.
+  virtual bool MinusJacobian(const double* x, double* jacobian) const;
 
   /// \brief Computes the Jacobian from minimal space to naively overparameterised
   /// space as used by ceres. It is the inverse of the plusJacobian.
@@ -129,13 +134,13 @@ class PoseLocalParameterization :
   static bool liftJacobian(const double* x, double* jacobian);
 
   /// \brief The parameter block dimension.
-  virtual int GlobalSize() const
+  virtual int AmbientSize() const
   {
     return 7;
   }
 
   /// \brief The parameter block local dimension.
-  virtual int LocalSize() const
+  virtual int TangentSize() const
   {
     return 6;
   }

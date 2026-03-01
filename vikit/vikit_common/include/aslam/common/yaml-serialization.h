@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
+#include <cassert>
 #include <vector>
 
 #include <aslam/common/memory.h>

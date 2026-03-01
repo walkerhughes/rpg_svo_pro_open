@@ -1,18 +1,7 @@
-project(rpg_common)
-cmake_minimum_required(VERSION 2.8.3)
-
-find_package(catkin_simple REQUIRED)
-catkin_simple(ALL_DEPS_REQUIRED)
-find_package(OpenCV REQUIRED)
-
-add_definitions(-std=c++11)
-
-FILE(GLOB_RECURSE HEADERS "include/*")
-
-list(APPEND SOURCES src/fs.cpp)
-
-cs_add_library(${PROJECT_NAME} ${HEADERS} ${SOURCES})
-target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBRARIES})
-
-cs_install()
-cs_export()
+add_library(rpg_common INTERFACE)
+add_library(svo::rpg_common ALIAS rpg_common)
+target_include_directories(rpg_common INTERFACE
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+)
+target_link_libraries(rpg_common INTERFACE Eigen3::Eigen minkindr)

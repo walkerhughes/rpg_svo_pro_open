@@ -371,10 +371,10 @@ class MarginalizationError : public ceres::CostFunction, public ErrorInterface
     {
       dimension = parameter_block_ptr->dimension();
       minimal_dimension = parameter_block_ptr->minimalDimension();
-      if (parameter_block_ptr->localParameterizationPtr())
+      if (parameter_block_ptr->manifoldPtr())
       {
-        local_dimension = parameter_block_ptr->localParameterizationPtr()
-            ->LocalSize();
+        local_dimension = parameter_block_ptr->manifoldPtr()
+            ->TangentSize();
       }
       else
       {

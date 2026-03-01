@@ -4,6 +4,8 @@
 // (Robotics and Perception Group, University of Zurich, Switzerland).
 
 #include <numeric>
+#include <algorithm>
+#include <random>
 #include <svo/direct/matcher.h>
 #include <svo/common/point.h>
 #include <svo/common/frame.h>
@@ -74,8 +76,11 @@ void StereoTriangulation::compute(const FramePtr& frame0,
         [](const FeatureType& t) { return t==FeatureType::kCorner; });
 
   // shuffle twice before we prefer corners!
-  std::random_shuffle(indices.begin(), indices.begin()+n_corners);
-  std::random_shuffle(indices.begin()+n_corners, indices.end());
+  {
+    std::mt19937 rng{std::random_device{}()};
+    std::shuffle(indices.begin(), indices.begin()+n_corners, rng);
+    std::shuffle(indices.begin()+n_corners, indices.end(), rng);
+  }
 
   // now for all maximum corners, initialize a new seed
   size_t n_succeded = 0, n_failed = 0;

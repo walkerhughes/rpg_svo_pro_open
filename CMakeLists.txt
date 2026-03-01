@@ -102,6 +102,10 @@ if(SVO_BUILD_LOOP_CLOSING)
   add_subdirectory(svo_online_loopclosing)
 endif()
 
+if(SVO_BUILD_GLOBAL_MAP)
+  add_subdirectory(svo_global_map)
+endif()
+
 add_subdirectory(svo)
 
 # Collect all library targets for install
@@ -125,6 +129,9 @@ set(SVO_INSTALL_TARGETS
 )
 if(SVO_BUILD_LOOP_CLOSING)
   list(APPEND SVO_INSTALL_TARGETS svo_online_loopclosing svo_pgo)
+endif()
+if(SVO_BUILD_GLOBAL_MAP)
+  list(APPEND SVO_INSTALL_TARGETS svo_global_map)
 endif()
 
 install(TARGETS ${SVO_INSTALL_TARGETS}
@@ -153,6 +160,9 @@ install(DIRECTORY third_party/eigen_checks/include/ DESTINATION include)
 if(SVO_BUILD_LOOP_CLOSING)
   install(DIRECTORY svo_online_loopclosing/include/ DESTINATION include)
   install(DIRECTORY svo_pgo/include/ DESTINATION include)
+endif()
+if(SVO_BUILD_GLOBAL_MAP)
+  install(DIRECTORY svo_global_map/include/ DESTINATION include)
 endif()
 
 # Install CMake config files

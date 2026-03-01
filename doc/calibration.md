@@ -1,14 +1,13 @@
-Here we introduce how to calibrate cameras using several commonly used models and covert to svo format.
+# Camera and Sensor Calibration
 
-# Camera calibration
+SVO supports several camera models. This document describes how to calibrate cameras using common tools and convert the output to SVO's YAML format.
 
-## Pinhole projection + Radial-tangential
-This is the distortion model used in opencv and ROS, also known as `plumb_bob`. We can calibrate it using the tool provided by ROS:
-```sh
-sudo apt-get install ros-melodic-camera-calibration
-rosrun camera_calibration cameracalibrator.py <specify topics/calibration target>
-```
-Make sure to adapt size for the checkerboard actually used. What you get is in the format:
+## Camera Models
+
+### Pinhole + Radial-Tangential
+
+This is the standard distortion model used in OpenCV (also known as `plumb_bob`). Calibrate using any OpenCV-based calibration tool. The output format is:
+
 ```
 camera matrix
 fx 0 cx
@@ -17,11 +16,10 @@ fx 0 cx
 
 distortion
 d0 d1 d2 d3 0
-
-.........
 ```
 
-For use with svo, copy the values to the following template (values with $ prefix have to be filled in):
+For use with SVO, fill in the following YAML template:
+
 ```yaml
 cameras:
 - camera:
@@ -29,7 +27,7 @@ cameras:
       parameters:
         cols: 1
         rows: 4
-        data: [$d0, $d1 , $d2 , $d3]
+        data: [$d0, $d1, $d2, $d3]
       type: radial-tangential
     image_height: $image_height
     image_width: $image_width
@@ -51,25 +49,56 @@ cameras:
   calib_date: 0
   description: '$camera_name'
 label: $camera_name
-
 ```
 
-`T_B_C` is the pose of the camera frame in the IMU frame. This is used when SVO is set to use the IMU.
+`T_B_C` is the pose of the camera frame in the IMU/body frame. This is used when SVO is configured to use the IMU.
 
-### Pinhole projection + Equidistant
-This is a generic distortion model that can model very different field of views ([paper](http://www.ee.oulu.fi/mvg/files/pdf/pdf_697.pdf)), therefore we can use it for pinhole as well as fisheye cameras. OpenCV (from 3.0) also [supports this model](http://docs.opencv.org/master/db/d58/group__calib3d__fisheye.html). To calibrate a camera using a equidistant camera model, we can use [Kalibr](https://github.com/ethz-asl/kalibr). For details of Kalibr calibration, please refer to [this official manual](https://github.com/ethz-asl/kalibr/wiki/multiple-camera-calibration).
+### Pinhole + Equidistant
 
-Afterwards, you can use the script `kalibr_to_svo.py` under `svo_ros/scripts` to convert the output to svo format:
+This is a generic distortion model that can handle very different fields of view ([paper](http://www.ee.oulu.fi/mvg/files/pdf/pdf_697.pdf)), making it suitable for both pinhole and fisheye cameras. OpenCV 3.0+ [supports this model](http://docs.opencv.org/master/db/d58/group__calib3d__fisheye.html).
+
+To calibrate, use [Kalibr](https://github.com/ethz-asl/kalibr). Refer to the [Kalibr calibration manual](https://github.com/ethz-asl/kalibr/wiki/multiple-camera-calibration) for details.
+
+Convert the Kalibr output to SVO format using:
 
 ```sh
-./kalibr_to_svo --kalibr <output_of_kalibr>
+python svo_ros/scripts/kalibr_to_svo.py --kalibr <output_of_kalibr>
 ```
 
+### Omnidirectional
 
-## Omnidirectional
-This is a special model that combines projection and distortion together. It works for fisheye as well as catadioptric cameras. To use this camera model, you need to calibrate the camera using [this Matlab Toolbox](https://sites.google.com/site/scarabotix/ocamcalib-toolbox). Please refer to the page of the toolbox for details.
+This model combines projection and distortion into a single representation. It works for fisheye and catadioptric cameras. Calibrate using the [OCamCalib Matlab Toolbox](https://sites.google.com/site/scarabotix/ocamcalib-toolbox).
 
-Afterwards, you can use the script `omni_matlab_to_rpg.py` under `svo_ros/scripts` to convert the output to svo format.
+Convert the Matlab output to SVO format using:
 
-# Visual-inertial calibration
-We recommend to use [Kalibr](https://github.com/ethz-asl/kalibr) for calibrating visual-inertial sensors. Please see [this document](./frontend/frontend_fla.md) for the format of the calibration file for stereo and stereo + IMU configurations.
+```sh
+python svo_ros/scripts/omni_matlab_to_rpg.py <matlab_output>
+```
+
+## Visual-Inertial Calibration
+
+For calibrating visual-inertial sensor systems (camera-IMU extrinsics and time offsets), we recommend [Kalibr](https://github.com/ethz-asl/kalibr).
+
+See [frontend_fla.md](./frontend/frontend_fla.md) for the format of calibration files for stereo and stereo + IMU configurations, including:
+- Camera intrinsics and extrinsics (`T_B_C`)
+- IMU noise parameters (`sigma_omega_c`, `sigma_acc_c`, `sigma_omega_bias_c`, `sigma_acc_bias_c`)
+- IMU initialization values (velocity, biases)
+
+## Example Calibration Files
+
+Example calibration files are provided under `svo_ros/param/calib/`:
+
+| File | Description |
+|---|---|
+| `svo_test_pinhole.yaml` | Test pinhole camera |
+| `euroc_mono.yaml` | EuRoC monocular |
+| `euroc_stereo.yaml` | EuRoC stereo |
+| `bluefox_25000826_fisheye.yaml` | Bluefox fisheye camera |
+| `fla_stereo_imu.yaml` | FLA stereo + IMU |
+| `davis_flyingroom.yaml` | DAVIS event camera |
+
+## Tips
+
+* Always use a **global shutter** camera. A good choice is [the Bluefox camera](https://www.matrix-vision.com/USB2.0-single-board-camera-mvbluefox-mlc.html) from MatrixVision.
+* The translation components of the camera-IMU extrinsics are sometimes poorly calibrated (likely due to lack of accelerometer excitation). Double-check your calibration results before use.
+* The `kalibr_to_svo.py` script also handles multi-camera setups with IMU.

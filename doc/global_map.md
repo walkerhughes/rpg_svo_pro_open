@@ -1,32 +1,62 @@
-# Using SVO with iSAM2 based global map
+# Using SVO with iSAM2-Based Global Map
 
-As described in [SVO + OKVIS backend](./vio.md), fixed-lag smoothing is good for constant time update, but inevitably drifts over time. Using loop closure and pose graph to maintain global consistency is effective to a certain extent. However, lacking the ability to consider raw sensor measurements, loop closure + pose graph is limited in terms of accuracy. 
+As described in [SVO + OKVIS backend](./vio.md), fixed-lag smoothing is good for constant-time updates but inevitably drifts over time. Loop closure + pose graph optimization helps maintain global consistency, but is limited in accuracy because it cannot consider raw sensor measurements.
 
-Therefore, we integrated a global bundle adjusted map using iSAM2. In short, once a keyframes goes out of the sliding window of the Ceres backend, we add it to a global visual-inertial bundle adjustment managed by iSAM2, which is executed in a separate thread. Moreover, in the visual front-end, we try to track points that are already optimized by iSAM2 (assuming iSAM2 converges fast enough and offers better accuracy).
+Therefore, we integrated a globally bundle-adjusted map using iSAM2. In short, once a keyframe exits the sliding window of the Ceres backend, we add it to a global visual-inertial bundle adjustment managed by iSAM2, which runs in a separate thread. In the visual front-end, we track points already optimized by iSAM2 (assuming iSAM2 converges fast enough to offer better accuracy).
 
-The motivation of the design is to achieve high real-time accuracy by localizing against a globally consistent map at every frame, instead of relying on non-causal information to correct drift. The matching of the current frame against the global map is the same as in SVO - via direct tracking using patches. This is not very robust, but works quite well in mild motion (probably thanks to the gyroscopes).
+The motivation is to achieve high real-time accuracy by localizing against a globally consistent map at every frame, instead of relying on non-causal information to correct drift. The matching of the current frame against the global map uses the same approach as SVO -- direct tracking using patches. This is not very robust, but works quite well in mild motion (probably thanks to the gyroscopes).
 
-One important implementation detail is that, to deal with occasionally indeterministic error with iSAM2, a weak prior of the landmark depth is added when the landmark is added to the global map (assuming the Ceres-based back-end provides reasonable initial estimate).
+**Implementation detail:** To handle occasionally indeterministic errors with iSAM2, a weak prior on landmark depth is added when a landmark enters the global map (assuming the Ceres backend provides a reasonable initial estimate).
 
-Note that the global map function is only tested with monocular configuration and is relatively unstable compared with the visual-inertial odometry part.
+**Note:** The global map function has only been tested with monocular configuration and is relatively less stable than the visual-inertial odometry part.
 
+## Prerequisites
 
+Building with global map support requires GTSAM 4.2. Since GTSAM is incompatible with Eigen 5, it must be built from source with its bundled Eigen. See the [main README](../README.md#building-with-global-map-gtsam) for full build instructions.
 
-## Examples on EuRoC
+Build SVO with the global map enabled:
 
-Source the workspace first:
 ```sh
-source ~/svo_ws/devel/setup.bash
+cmake .. -DCMAKE_BUILD_TYPE=Release -DSVO_BUILD_GLOBAL_MAP=ON \
+  -DGTSAM_DIR=/usr/local/lib/cmake/GTSAM
+cmake --build . -j$(nproc)
 ```
-Executing
+
+## Configuration
+
+The global map is configured via `svo_ros/param/global_map.yaml` in addition to the standard VIO parameters.
+
+### C++ API usage
+
+```cpp
+#include <svo/svo_factory.h>
+#include <yaml-cpp/yaml.h>
+
+YAML::Node config = YAML::LoadFile("global_map.yaml");
+auto camera = loadCameraBundle(config);
+auto svo = svo::factory::makeMono(config, camera);
 ```
-roslaunch svo_ros euroc_global_map_mono.launch
-rosbag play MH_03_medium.bag -s 15
-```
-You should see some visualization as below:
+
+## Pipeline Architecture
+
+The global map pipeline extends the VIO pipeline:
+
+1. **Visual front-end (SVO):** Tracks features semi-directly, creates keyframes.
+2. **Sliding window backend (Ceres):** Optimizes recent keyframes in a fixed-size window.
+3. **Global map (iSAM2):** Keyframes that exit the sliding window are added to iSAM2's incremental factor graph. iSAM2 performs global bundle adjustment in a background thread.
+4. **Re-localization:** When the camera revisits a previously mapped region, the front-end matches against iSAM2-optimized landmarks, anchoring the sliding window to the globally consistent map.
+
+### Visualization cues
+
+* **Green points** -- landmarks in the current sliding window optimization, with trailing lines showing the active keyframes.
+* **Blue points** -- landmarks optimized and managed by iSAM2. Points exiting the sliding window transition from green to blue. iSAM2-optimized points are slightly more accurate.
+* **Golden lines** -- matches between the current frame and iSAM2 landmarks during re-localization.
+* **Green rectangle around image** -- indicates enough fixed landmarks from the global map are observed in the current sliding window, allowing the pipeline to drop the usual first-frame fixation constraint.
+
+## EuRoC Example
+
+Using the EuRoC MH_03_medium sequence with a monocular global map configuration:
 
 ![](./images/mh03_gm.gif)
 
-The green points are the landmarks that are observed by the frames that are currently in the sliding window optimization, which is indicated by the trailing lines. The blue points are the landmarks that are optimized and managed by iSAM2. As mentioned above, once the green points go out of the sliding window, they are taken over by iSAM2. You can observe the points optimized by iSAM2 are slightly more accurate.
-
-Once the camera moves back to the region that is already mapped, the pipeline tries to match features against the blue points, which are indicated by the golden lines. The successfully matched blue points are treated as **fixed anchors** in the sliding window optimization, which anchors the sliding window to the consistent global map managed by iSAM2. The green rectangle surround the image indicates that there are enough fixed landmarks observed in the current sliding window, and we can drop the fixation at the first frame that is usually done in sliding window optimization.
+As the camera moves back to previously mapped regions, the pipeline matches features against the blue (iSAM2) points. Successfully matched landmarks serve as fixed anchors in the sliding window optimization, anchoring the local estimate to the global map.

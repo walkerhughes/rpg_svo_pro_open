@@ -36,7 +36,7 @@ Additionally, please cite the following papers for the specific extensions you m
 * *Brightness/exposure compensation*: Zichao Zhang, Christian Forster, Davide Scaramuzza. Active Exposure Control for Robust Visual Odometry in HDR Environments. ICRA, 2017. [bibtex](./doc/bib/Zhang17icra.bib)
 * *Ceres-based optimization backend*: Stefan Leutenegger, Simon Lynen, Michael Bosse, Roland Siegwart, Paul Timothy Furgale. Keyframe-based visual–inertial odometry using nonlinear optimization. IJRR, 2015. [bibtex](./doc/bib/Leutenegger15ijrr.bib)
 * *Global map powered by iSAM2*: Michael Kaess, Hordur Johannsson, Richard Roberts, Viorela Ila, John Leonard, Frank Dellaert. iSAM2: Incremental Smoothing and Mapping Using the Bayes Tree. IJRR, 2012. [bibtex](./doc/bib/Kaess12ijrr.bib)
-* *Loop closure*: Dorian Gálvez-López and Juan D. Tardós. Bags of Binary Words for Fast Place Recognition in Image Sequences. TRO, 2012. [bibtex](./doc/bib/Galvez12tro.bib)
+* *Loop closure*: Dorian Galvez-Lopez and Juan D. Tardos. Bags of Binary Words for Fast Place Recognition in Image Sequences. TRO, 2012. [bibtex](./doc/bib/Galvez12tro.bib)
 
 Our recent publications that use SVO Pro are:
 
@@ -59,7 +59,8 @@ You will need:
 * Ceres Solver 2.2+
 * glog, gflags
 * yaml-cpp
-* Google Test (for tests)
+* Boost (only if building with `SVO_BUILD_GLOBAL_MAP=ON`)
+* Google Test (only if building with `SVO_BUILD_TESTS=ON`)
 
 #### macOS (Homebrew)
 
@@ -97,7 +98,9 @@ cmake --build . -j$(nproc)
 | `SVO_BUILD_LOOP_CLOSING` | `ON` | Build loop closing and pose graph optimization modules |
 | `SVO_BUILD_GLOBAL_MAP` | `OFF` | Build global map modules (requires GTSAM) |
 
-Example with tests:
+### Running tests
+
+Build with tests enabled and run via CTest:
 
 ```sh
 cmake .. -DCMAKE_BUILD_TYPE=Release -DSVO_BUILD_TESTS=ON
@@ -105,7 +108,24 @@ cmake --build . -j$(nproc)
 ctest --output-on-failure
 ```
 
-#### Building with global map (GTSAM)
+This builds and runs 12 unit tests covering the Ceres backend (manifold parameterizations, error terms, marginalization, IMU errors, map operations) and the core SVO frame pipeline.
+
+| Test | Module | What it tests |
+|---|---|---|
+| `test_backend_id` | svo_ceres_backend | Backend ID generation |
+| `test_estimator` | svo_ceres_backend | Full estimator pipeline |
+| `test_homogeneous_point_error` | svo_ceres_backend | Homogeneous point error term |
+| `test_map` | svo_ceres_backend | Map data structure |
+| `test_marginalization` | svo_ceres_backend | Schur complement marginalization |
+| `test_pose_error` | svo_ceres_backend | Pose error term |
+| `test_pose_local_parameterization` | svo_ceres_backend | Manifold Plus/Minus round-trip |
+| `test_reprojection_error` | svo_ceres_backend | Reprojection error term |
+| `test_relative_pose_error` | svo_ceres_backend | Relative pose error term |
+| `test_speed_and_bias_error` | svo_ceres_backend | Speed and bias error term |
+| `test_imu_error` | svo_ceres_backend | IMU preintegration error |
+| `test_frame` | svo | Frame creation and keypoint management |
+
+### Building with global map (GTSAM)
 
 The global map module requires [GTSAM](https://gtsam.org/) 4.2. GTSAM is not available via Homebrew and is incompatible with Eigen 5, so it must be built from source with its bundled Eigen 3:
 
@@ -124,7 +144,7 @@ cmake --build gtsam/build -j$(nproc)
 sudo cmake --install gtsam/build
 ```
 
-> **Note:** The `PatchGtsamBoost.cmake` script removes the `boost_system` library requirement, which became header-only in Boost >= 1.69. Run it from the GTSAM source root before building. If your Boost still ships `libboost_system`, you can skip this step.
+> **Note:** The `PatchGtsamBoost.cmake` script removes the `boost_system` compiled library requirement, which became header-only in Boost >= 1.69. Run it from the GTSAM source root before building. If your Boost still ships `libboost_system`, you can skip this step.
 
 Then build SVO with the global map:
 
@@ -133,6 +153,16 @@ cmake .. -DCMAKE_BUILD_TYPE=Release -DSVO_BUILD_GLOBAL_MAP=ON \
   -DGTSAM_DIR=/usr/local/lib/cmake/GTSAM
 cmake --build . -j$(nproc)
 ```
+
+### Loop closure vocabulary
+
+If you enable loop closing (on by default), download the DBoW2 vocabulary files:
+
+```sh
+cd svo_online_loopclosing/vocabularies && ./download_voc.sh
+```
+
+This downloads vocabulary files from the RPG server. Without these, the pipeline will crash when initializing loop closure.
 
 ### Using SVO as a library
 
@@ -164,7 +194,26 @@ auto camera = loadCameraBundle(config);
 auto svo = svo::factory::makeMono(config, camera);
 ```
 
-See the original [documentation](./doc/frontend/visual_frontend.md) for parameter descriptions. Parameter names are unchanged from the ROS version; only the loading mechanism has changed from `ros::NodeHandle` to `YAML::Node`.
+Two main types of YAML files are needed:
+
+1. **Parameter file** (e.g. `pinhole.yaml`, `vio_mono.yaml`) -- pipeline settings, feature detection thresholds, backend options, loop closure parameters
+2. **Calibration file** (e.g. `euroc_mono.yaml`) -- camera intrinsics, distortion, IMU noise model, camera-IMU extrinsics
+
+Example parameter and calibration files are provided under `svo_ros/param/` and `svo_ros/param/calib/`. Parameter names are unchanged from the upstream ROS version; only the loading mechanism has changed from `ros::NodeHandle` to `YAML::Node`.
+
+See the detailed documentation below for parameter descriptions and tuning guidance.
+
+## Documentation
+
+* **Getting started**
+    * [The visual front-end](./doc/frontend/visual_frontend.md) -- camera models, parameter files, calibration
+    * [Stereo + IMU configuration](./doc/frontend/frontend_fla.md) -- calibration format, IMU parameters, resolution tuning
+* **Pipeline modes**
+    * [Visual-inertial odometry](./doc/vio.md) -- VIO backend, loop closure
+    * [VIO + global map](./doc/global_map.md) -- iSAM2-based global bundle adjustment
+* **Reference**
+    * [Camera and sensor calibration](./doc/calibration.md) -- pinhole, equidistant, omnidirectional models
+    * [Known issues and possible improvements](./doc/known_issues_and_improvements.md)
 
 ## What changed from upstream
 
@@ -195,19 +244,10 @@ This fork makes the following changes from [uzh-rpg/rpg_svo_pro_open](https://gi
 * `std::random_shuffle` replaced with `std::shuffle`
 * `std::bind2nd` replaced with lambdas
 * Added missing `#include <cassert>` where needed
+* Eigen 5 compatibility fixes for `ConstantReturnType`/`IdentityReturnType`
 
 **Dropped packages** (ROS-only, not included in the build):
 `svo_ros`, `svo_msgs`, `vikit_ros`, `vikit_py`, `rqt_svo`, `svo_benchmarking`, `svo_cmake`
-
-## Instructions
-
-* Get started: running the pipeline
-    * [The visual front-end](./doc/frontend/visual_frontend.md)
-    * [Visual-inertial odometry](./doc/vio.md)
-    * [VIO + global map](./doc/global_map.md)
-* [Benchmarking](./doc/benchmarking.md)
-* [Camera and sensor calibration](./doc/calibration.md)
-* [Known issues and possible improvements](./doc/known_issues_and_improvements.md)
 
 ## Troubleshooting
 
@@ -223,9 +263,13 @@ This fork makes the following changes from [uzh-rpg/rpg_svo_pro_open](https://gi
     cd svo_online_loopclosing/vocabularies && ./download_voc.sh
     ```
 
+5. **CMake 4.x errors with FetchContent dependencies**: The build uses `cmake_minimum_required(VERSION 3.16...4.1)` and sets `CMAKE_POLICY_VERSION_MINIMUM` to handle old `cmake_minimum_required` in fetched dependencies (opengv, DBoW2). If you see policy errors, ensure you are using CMake 3.16 or newer.
+
+6. **`-msse2` error on Apple Silicon**: The build detects ARM vs x86 via `CMAKE_SYSTEM_PROCESSOR` and only applies `-msse2` on x86. If you see this error, ensure you are not cross-compiling or overriding the processor detection.
+
 ## Acknowledgement
 
-Thanks to Simon Klenk, Manasi Muglikar, Giovanni Cioffi and Javier Hidalgo-Carrió for their valuable help and comments for the open source code.
+Thanks to Simon Klenk, Manasi Muglikar, Giovanni Cioffi and Javier Hidalgo-Carrio for their valuable help and comments for the open source code.
 
 The work is made possible thanks to the efforts of many contributors from RPG. Apart from the authors listed in the above papers, Titus Cieslewski and Henri Rebecq made significant contributions to the visual front-end. Jeffrey Delmerico made great efforts to apply SVO on different real robots, which in turn helped improve the pipeline. Many PhD and master students and lab engineers have also contributed to the code.
 

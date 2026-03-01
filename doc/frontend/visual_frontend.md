@@ -1,94 +1,103 @@
-# Run the visual front-end
-Remember to source the workspace first
-```sh
-source ~/svo_ws/devel/setup.bash
-```
-## Example bags and launch files
+# The Visual Front-End
 
-Download the test bag file from [here](http://rpg.ifi.uzh.ch/datasets/airground_rig_s3_2013-03-18_21-38-48.bag). Launch SVO node:
+## Overview
 
-```sh
-roslaunch svo_ros run_from_bag.launch cam_name:=svo_test_pinhole
-```
+SVO's visual front-end handles feature tracking, depth estimation, and pose estimation using a semi-direct approach. It supports perspective and fisheye/catadioptric cameras in monocular or stereo configurations, with optional active exposure control.
 
-This will also start RVIZ. Then play the bag file:
+## Configuration
 
-```sh
-rosbag play airground_rig_s3_2013-03-18_21-38-48.bag
-```
+SVO is configured via YAML files loaded through `YAML::Node`. Two types of YAML files are needed:
 
-Now you should be able to observe the camera motion and sparse map in RVIZ.
+1. **Parameter file** -- pipeline settings (feature detection thresholds, pyramid levels, grid size, etc.)
+2. **Calibration file** -- camera intrinsics, distortion, and optionally IMU extrinsics and noise model
 
-You can also download [another bag recorded with a fisheye camera](http://rpg.ifi.uzh.ch/datasets/test_fisheye.bag). Then you need to change the following line in `run_from_bag.launch`:
+Example parameter and calibration files are provided under `svo_ros/param/` and `svo_ros/param/calib/`.
 
-```xml
-<rosparam file="$(find svo_ros)/param/pinhole.yaml" />
-```
+### Using SVO in your application
 
-to
+```cpp
+#include <svo/svo_factory.h>
+#include <yaml-cpp/yaml.h>
 
-```xml
-<rosparam file="$(find svo_ros)/param/fisheye.yaml" />
-```
-And launch SVO via:
-
-```sh
-roslaunch svo_ros run_from_bag.launch cam_name:=bluefox_25000826_fisheye
+// Load parameter and calibration YAML files
+YAML::Node config = YAML::LoadFile("pinhole.yaml");
+auto camera = loadCameraBundle(config);
+auto svo = svo::factory::makeMono(config, camera);
 ```
 
-## Customize launch files
-We provide several example launch files under `svo_ros/launch`, such as:
-* `run_from_bag.launch`: run SVO on an topic that publishes images
-* `live_nodelet.launch`: run svo as nodelet. These files can not be launched directly, since they depend on some private packages. But they can be used as an example for using svo with other nodes.
+## Parameter Files
 
-In the launch file, you have to specify the following for svo node/nodelet, as in `run_from_bag.launch`:
-```xml
-    <!-- Camera topic to subscribe to -->
-    <param name="cam0_topic" value="camera/image_raw" type="str" />
-    
-    <!-- Camera calibration file -->
-    <param name="calib_file" value="$(arg calib_file)" />
-    
-    <!--Parameters-->
-    <rosparam file="$(find svo_ros)/param/pinhole.yaml" />
+We provide several example parameter files under `svo_ros/param/`:
 
-  Note that SVO also supports stereo cameras.
+* `pinhole.yaml` -- for relatively small field-of-view cameras (e.g. 752x480)
+* `fisheye.yaml` -- for cameras with wide-angle lenses (fisheye and catadioptric)
+* `frontend_imu/euroc_mono_imu.yaml` -- monocular + IMU (EuRoC dataset)
+* `frontend_imu/euroc_stereo_imu.yaml` -- stereo + IMU (EuRoC dataset)
+
+The parameters in these files are typical values. Refer to the comments in each file for descriptions and tuning guidance.
+
+### Key parameters
+
+```yaml
+# Pyramid levels for coarse-to-fine optimization
+img_align_max_level: 4    # maximum pyramid level
+n_pyr_levels: 3           # total pyramid levels (typically max_level - 1)
+
+# Feature grid
+grid_size: 30             # feature bucketing grid cell size (pixels)
+
+# Outlier rejection
+poseoptim_thresh: 2.0     # pose optimization outlier threshold (pixels)
+
+# Initialization (monocular only)
+init_min_disparity: 25    # minimum disparity for initialization
 ```
 
-### Parameter files
-We provide two example parameter files under `svo_ros/param`:
-* `pinhole.yaml`: for relatively small field of view cameras
-* `fisheye.yaml`: for cameras with wide angle lens (e.g., fisheye and catadioptric)
+For higher-resolution images (e.g. 1280x1040), increase pyramid levels, grid size, and thresholds proportionally. See [frontend_fla.md](./frontend_fla.md) for a worked example.
 
-The parameters in these files are typical values. If you wish to change the parameters, please refer to the comments in these two files. 
+## Calibration Files
 
-### Camera calibration files
-If you want to use your own camera, make sure a global shutter camera is used. A good choice is [the Bluefox camera](https://www.matrix-vision.com/USB2.0-single-board-camera-mvbluefox-mlc.html) from MatrixVision.
-You can put camera calibration files under `svo_ros/calib` and load them as in `run_from_bag.launch`. We use yaml files to specify camera parameters. Please refer to [calibration.md](./calibration.md) for more details.
+Calibration files define camera intrinsics, distortion model, and body-camera extrinsic transformations. Example calibration files are under `svo_ros/param/calib/`:
 
-## Inertial-aided frontend
+* `svo_test_pinhole.yaml` -- test pinhole camera
+* `euroc_mono.yaml` -- EuRoC monocular
+* `euroc_stereo.yaml` -- EuRoC stereo
+* `bluefox_25000826_fisheye.yaml` -- Bluefox fisheye camera
+* `fla_stereo_imu.yaml` -- stereo + IMU (FLA dataset)
 
-Without using the relatively heavy ceres-based backend, the frontend can also use IMU to facilitate visual tracking. This is not as accurate as a tightly coupled VIO, but is relatively lightweight.
+See [calibration.md](../calibration.md) for details on supported camera models and calibration tools.
 
-We provide two launch files for [EuRoC](http://projects.asl.ethz.ch/datasets/doku.php?id=kmavvisualinertialdatasets) for monocular and stereo setups:
+## Inertial-Aided Front-End
 
-```sh
-roslaunch svo_ros euroc_mono_frontend_imu.launch
-roslaunch svo_ros euroc_stereo_frontend_imu.launch
+Without the heavier Ceres-based backend, the front-end can use IMU measurements to facilitate visual tracking. This provides a rotational prior for image alignment and pose optimization. It is not as accurate as tightly-coupled VIO, but is relatively lightweight.
+
+Example configs for the EuRoC dataset:
+* `svo_ros/param/frontend_imu/euroc_mono_imu.yaml`
+* `svo_ros/param/frontend_imu/euroc_stereo_imu.yaml`
+
+### IMU parameters
+
+```yaml
+use_imu: True
+img_align_prior_lambda_rot: 5.0   # gyroscope prior in sparse image alignment
+poseoptim_prior_lambda: 2.0       # gyroscope prior in pose optimization
 ```
 
-These launch files read the parameters from `param/euroc_mono_imu.yaml` and `param/euroc_stereo_imu.yaml`. The parameters are not necessarily optimal for every sequence, but should be enough as a good starting point.
+The higher the prior lambdas, the more weight the IMU priors carry. If you have a high-quality IMU, set them higher; for a noisy IMU, set them lower.
 
-The first several images of many EuRoC sequences are not good for initialize `SVO`, especially for the monocular case. Therefore it is better to start the bag at a later time, for example:
+**Important:** If `use_imu` is `False` and the prior lambdas are nonzero, a constant velocity prior is used instead, which often does not perform well. Set the prior lambdas to zero when IMU is not used.
 
-```sh
-rosbag play MH_01_easy.bag -s 50
-rosbag play MH_02_easy.bag -s 45
-rosbag play V1_01_easy.bag
-rosbag play V1_02_medium.bag -s 13
-rosbag play V2_01_easy.bag
-rosbag play V2_02_medium.bag -s 13
-```
+### EuRoC initialization tips
 
-This is to avoid, for example, strong rotation for monocular initialization. For more details on using SVO with this configuration, please read [the step-by-step instruction](./frontend_fla.md).
+The first several images of many EuRoC sequences contain strong rotation or otherwise poor conditions for initialization, especially for monocular setups. Start playback at a later timestamp for best results:
 
+| Sequence | Recommended start offset |
+|---|---|
+| MH_01_easy | 50s |
+| MH_02_easy | 45s |
+| V1_01_easy | 0s (start from beginning) |
+| V1_02_medium | 13s |
+| V2_01_easy | 0s (start from beginning) |
+| V2_02_medium | 13s |
+
+See [frontend_fla.md](./frontend_fla.md) for a step-by-step guide on using SVO with stereo + IMU.

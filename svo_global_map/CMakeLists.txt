@@ -2,7 +2,13 @@ if(NOT SVO_BUILD_GLOBAL_MAP)
   return()
 endif()
 
-find_package(GTSAM REQUIRED)
+find_package(GTSAM QUIET)
+if(NOT GTSAM_FOUND)
+  message(FATAL_ERROR
+    "SVO_BUILD_GLOBAL_MAP=ON requires GTSAM but it was not found.\n"
+    "Install GTSAM (https://gtsam.org) or set GTSAM_DIR to its install prefix.\n"
+    "To build without global map support, set -DSVO_BUILD_GLOBAL_MAP=OFF (the default).")
+endif()
 
 add_library(svo_global_map
   src/gtsam/gtsam_optimizer.cpp

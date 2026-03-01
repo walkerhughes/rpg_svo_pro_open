@@ -46,92 +46,129 @@ Our recent publications that use SVO Pro are:
 
 ## Install
 
-The code has been tested on
+### Prerequisites
 
-* Ubuntu 18.04 with ROS Melodic
-* Ubuntu 20.04 with ROS Noetic
+This fork has been refactored from Catkin/ROS to a standalone CMake build. **ROS is no longer required.**
 
-### Install dependences
+You will need:
 
-Install [catkin tools](https://catkin-tools.readthedocs.io/en/latest/installing.html) and [vcstools](https://github.com/dirk-thomas/vcstool) if you haven't done so before. Depending on your operating system, run
+* CMake 3.16+
+* C++17 compiler (GCC 7+, Clang 5+, Apple Clang 10+)
+* Eigen3
+* OpenCV
+* Ceres Solver 2.2+
+* glog, gflags
+* yaml-cpp
+* Google Test (for tests)
+
+#### macOS (Homebrew)
+
 ```sh
-# For Ubuntu 18.04 + Melodic
-sudo apt-get install python-catkin-tools python-vcstool
-```
-or
-```sh
-# For Ubuntu 20.04 + Noetic
-sudo apt-get install python3-catkin-tools python3-vcstool python3-osrf-pycommon
-```
-Install system dependencies and dependencies for Ceres Solver
-```sh
-# system dep.
-sudo apt-get install libglew-dev libopencv-dev libyaml-cpp-dev 
-# Ceres dep.
-sudo apt-get install libblas-dev liblapack-dev libsuitesparse-dev
+brew install cmake eigen opencv ceres-solver glog gflags yaml-cpp googletest
 ```
 
-### Clone and compile
-Create a workspace and clone the code (`ROS-DISTRO`=`melodic`/`noetic`):
+#### Ubuntu 22.04+
+
 ```sh
-mkdir svo_ws && cd svo_ws
-# see below for the reason for specifying the eigen path
-catkin config --init --mkdirs --extend /opt/ros/<ROS-DISTRO> --cmake-args -DCMAKE_BUILD_TYPE=Release -DEIGEN3_INCLUDE_DIR=/usr/include/eigen3
-cd src
-git clone git@github.com:uzh-rpg/rpg_svo_pro_open.git
-vcs-import < ./rpg_svo_pro_open/dependencies.yaml
-touch minkindr/minkindr_python/CATKIN_IGNORE
-# vocabulary for place recognition
-cd rpg_svo_pro_open/svo_online_loopclosing/vocabularies && ./download_voc.sh
-cd ../../..
+sudo apt-get install cmake build-essential libeigen3-dev libopencv-dev \
+  libceres-dev libgoogle-glog-dev libgflags-dev libyaml-cpp-dev \
+  libgtest-dev libsuitesparse-dev
 ```
-There are two types of builds that you can proceed from here
-1. Build without the global map (**front-end + sliding window back-end + loop closure/pose graph**)
 
-   ```sh
-   catkin build
-   ```
+> **Note on Ceres version:** This build requires Ceres 2.2+ (which uses the `ceres::Manifold` API). Ubuntu 22.04's default `libceres-dev` package may be older. If so, build [Ceres from source](http://ceres-solver.org/installation.html).
 
-   
+### Clone and build
 
-2. Build with the global map using iSAM2  (**all functionalities**)
+```sh
+git clone https://github.com/walkerhughes/rpg_svo_pro_open.git
+cd rpg_svo_pro_open
+mkdir build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release
+cmake --build . -j$(nproc)
+```
 
-    First, enable the global map feature
+[opengv](https://github.com/laurentkneip/opengv) and [DBoW2](https://github.com/dorian3d/DBoW2) are automatically downloaded via CMake `FetchContent` if not found on the system. [minkindr](https://github.com/ethz-asl/minkindr), [fast_neon](https://github.com/uzh-rpg/fast_neon), and eigen_checks are vendored under `third_party/`.
 
-    ```sh
-    rm rpg_svo_pro_open/svo_global_map/CATKIN_IGNORE
-    ```
-    and in `svo_cmake/cmake/Modules/SvoSetup.cmake`
+### Build options
 
-    ```cmake
-    SET(USE_GLOBAL_MAP TRUE)
-    ```
+| Option | Default | Description |
+|---|---|---|
+| `SVO_BUILD_TESTS` | `OFF` | Build unit tests |
+| `SVO_BUILD_LOOP_CLOSING` | `ON` | Build loop closing and pose graph optimization modules |
+| `SVO_BUILD_GLOBAL_MAP` | `OFF` | Build global map modules (requires GTSAM) |
 
-    Second, clone GTSAM
+Example with tests:
 
-    ```sh
-    git clone --branch 4.0.3 git@github.com:borglab/gtsam.git
-    ```
+```sh
+cmake .. -DCMAKE_BUILD_TYPE=Release -DSVO_BUILD_TESTS=ON
+cmake --build . -j$(nproc)
+ctest --output-on-failure
+```
 
-    and modify GTSAM compilation flags a bit:
+### Using SVO as a library
 
-    ```cmake
-    # 1. gtsam/CMakelists.txt: use system Eigen
-    -option(GTSAM_USE_SYSTEM_EIGEN "Find and use system-installed Eigen. If 'off', use the one bundled with GTSAM" OFF)
-    +option(GTSAM_USE_SYSTEM_EIGEN "Find and use system-installed Eigen. If 'off', use the one bundled with GTSAM" ON)
-    # 2. gtsam/cmake/GtsamBuildTypes: disable avx instruction set
-    # below the line `list_append_cache(GTSAM_COMPILE_OPTIONS_PUBLIC "-march=native")`
-    list_append_cache(GTSAM_COMPILE_OPTIONS_PUBLIC "-mno-avx")
-    ```
+After building, SVO can be installed and consumed by other CMake projects:
 
-    > Using the same version of Eigen helps avoid [memory issues](https://github.com/ethz-asl/eigen_catkin/wiki/Eigen-Memory-Issues). Disabling `avx`  instruction set also helps with some segment faults in our experience (this can be however OS and hardware dependent).
+```sh
+cmake --install . --prefix /usr/local
+```
 
-    And finally build the whole workspace
+Then in your project's `CMakeLists.txt`:
 
-    ```sh
-    # building GTSAM may take a while
-    catkin build
-    ```
+```cmake
+find_package(svo REQUIRED)
+target_link_libraries(my_app PRIVATE svo::svo)
+```
+
+All library targets are exported under the `svo::` namespace (e.g. `svo::common`, `svo::direct`, `svo::ceres_backend`, `svo::img_align`, `svo::tracker`).
+
+### Configuration
+
+SVO is configured via YAML files. Factory functions accept a `YAML::Node`:
+
+```cpp
+#include <svo/svo_factory.h>
+#include <yaml-cpp/yaml.h>
+
+YAML::Node config = YAML::LoadFile("svo_config.yaml");
+auto camera = loadCameraBundle(config);
+auto svo = svo::factory::makeMono(config, camera);
+```
+
+See the original [documentation](./doc/frontend/visual_frontend.md) for parameter descriptions. Parameter names are unchanged from the ROS version; only the loading mechanism has changed from `ros::NodeHandle` to `YAML::Node`.
+
+## What changed from upstream
+
+This fork makes the following changes from [uzh-rpg/rpg_svo_pro_open](https://github.com/uzh-rpg/rpg_svo_pro_open):
+
+**Build system** (Catkin/ROS to pure CMake):
+* Top-level `CMakeLists.txt` with modern CMake targets and `FetchContent`
+* Per-package `CMakeLists.txt` files replacing `catkin_simple` macros
+* `cmake/SvoCompilerFlags.cmake` INTERFACE library for shared compiler flags
+* Vendored `third_party/{minkindr, fast_neon, eigen_checks}`
+* Install/export rules with `svo::` namespace aliases
+
+**Ceres 2.2+ Manifold API migration** (replacing deprecated `LocalParameterization`):
+* `PoseLocalParameterization` and `HomogeneousPointLocalParameterization` inherit `ceres::Manifold`
+* `AmbientSize()`/`TangentSize()` replacing `GlobalSize()`/`LocalSize()`
+* `Plus()`/`Minus()`/`PlusJacobian()`/`MinusJacobian()` API
+* `SetManifold()` replacing `SetParameterization()` throughout
+* `ceres::EigenQuaternionManifold` replacing `ceres::EigenQuaternionParameterization`
+
+**ROS removal**:
+* Removed `SVO_USE_ROS` compile flag and all ROS includes
+* YAML-based `params_helper.h` replacing ROS parameter server reads
+* Removed `CeresBackendPublisher` (pure ROS visualization)
+* Factory functions extracted from `svo_ros` and adapted to `YAML::Node`
+* Test data paths via compile definitions and environment variables
+
+**C++17 compatibility fixes**:
+* `std::random_shuffle` replaced with `std::shuffle`
+* `std::bind2nd` replaced with lambdas
+* Added missing `#include <cassert>` where needed
+
+**Dropped packages** (ROS-only, not included in the build):
+`svo_ros`, `svo_msgs`, `vikit_ros`, `vikit_py`, `rqt_svo`, `svo_benchmarking`, `svo_cmake`
 
 ## Instructions
 
@@ -145,53 +182,17 @@ There are two types of builds that you can proceed from here
 
 ## Troubleshooting
 
-0. **Weird building issues after some tinkering**. It is recommend to 
-   
-    * clean your workspace (`catkin clean --all` at the workspace root)  and rebuild your workspace (`catkin build`)
-    * or `catkin build --force-cmake`
-    
-    after your have made changes to CMake files (`CMakeLists.txt` or `*.cmake`) to make sure the changes take effect.
-    
-    <details>
-      <summary>Longer explanation</summary>
-      Catkin tools can detect changes in CMake files and re-build affected files only. But since we are working with a multi-package project, some changes may not be detected as desired. For example, changing the building flags in `svo_cmake/cmake/Modules/SvoSetup.cmake` will affect all the packages but the re-compiling may not be done automatically (since the files in each package are not changed). Also, we need to keep the linking (e.g., library version) and compiling flags consistent across different packages. Therefore, unless you are familiar with how the compilation works out, it is the safest to re-build the whole workspace. `catkin build --force-cmake` should also work in most cases.
-    </details>
-    
-1. **Compiling/linking error related to OpenCV**: find `find_package(OpenCV REQUIRED)` in the `CMakeLists.txt` files in each package (in `rpg_common`, `svo_ros`, `svo_direct`, `vikit/vikit_common` and `svo_online_loopclosing`) and replace it with 
+1. **Eigen version mismatch**: If you have multiple Eigen versions installed, ensure CMake finds the correct one by setting `-DEIGEN3_INCLUDE_DIR=/path/to/eigen3` at configure time.
 
-   ```cmake
-   # Ubuntu 18.04 + Melodic
-   find_package(OpenCV 3 REQUIRED)
-   # Ubuntu 20.04 + Noetic
-   find_package(OpenCV 4 REQUIRED)
-   ```
+2. **Ceres version too old**: This build requires Ceres 2.2+. Check with `pkg-config --modversion ceres` or look for `ceres::Manifold` in your Ceres headers. If your system Ceres is too old, [build from source](http://ceres-solver.org/installation.html).
 
-   <details>
-     <summary>Longer explanation</summary>
-     First, ROS is built against OpenCV 3 on Ubuntu 18.04 and OpenCV 4 on Ubuntu 20.04. It is desired to keep the OpenCV version linked in SVO consistent with the ROS one, since in `svo_ros` we need to link everything with ROS. Second, The original `CMakeLists.txt` files will work fine if you only have the default OpenCV installed. But if you have some customized version of OpenCV installed (e.g., from source), it is recommended to explicitly specify the version of OpenCV that should be used (=the version ROS uses) as mentione above.
-   </details>
+3. **opengv build failures with Eigen 5**: If you have Eigen 5 installed, opengv's bundled `FindEigen.cmake` may fail. The top-level `CMakeLists.txt` includes workarounds for this, but if issues persist, set `EIGEN_INCLUDE_DIR` and `EIGEN_VERSION` cache variables explicitly.
 
-2. **Visualization issues with the PointCloud2**: Using `Points` to visualize `PointCloud2` in RVIZ seems to be [problematic](https://github.com/ros-visualization/rviz/issues/1508) in Ubuntu 20.04. We use other visualization types instead of `Points` per default. However, it is good to be aware of this if you want to customize the visualization.
-
-3. **Pipeline crashes with loop closure enabled**: If the pipeline crashes calling `svo::loadVoc()`, did you forgot to download the vocabulary files as mentioned above?
+4. **Pipeline crashes with loop closure enabled**: If the pipeline crashes calling `svo::loadVoc()`, make sure to download the vocabulary files:
 
     ```sh
-    cd rpg_svo_pro_open/svo_online_loopclosing/vocabularies && ./download_voc.sh
+    cd svo_online_loopclosing/vocabularies && ./download_voc.sh
     ```
-
-4. **Inconsistent Eigen versions during compilation**: The same Eigen should be used across the whole project (which should be system Eigen, since we are also using ROS). Check whether `eigen_catkin` and `gtsam` find the same version of Eigen:
-
-    ```sh
-    # for eigen_catkin
-    catkin build eigen_catkin --force-cmake --verbose
-    # for gtsam
-    catkin build gtsam --force-cmake --verbose
-    ```
-    
-    <details>
-         <summary>Longer explanation</summary>
-    One common pitfall of using Eigen in your projects is have different libraries compiled against different Eigen versions. For SVO, eigen_catkin (https://github.com/ethz-asl/eigen_catkin) is used to keep the Eigen version same, which should be the system one (under /usr/include) on 18.04 and 20.04. For GTSAM, system Eigen is found via a cumstomized cmake file (https://github.com/borglab/gtsam/blob/develop/cmake/FindEigen3.cmake#L66). It searches for `/usr/local/include` first, which may contain Eigen versions that are manually installed. Therefore, we explicitly specifies `EIGEN_INCLUDE_PATH` when configuring the workspace to force GTSAM to find system Eigen. If you still encounter inconsistent Eigen versions, the first thing to check is whether different versions of Eigen are still used.
-    </details>
 
 ## Acknowledgement
 

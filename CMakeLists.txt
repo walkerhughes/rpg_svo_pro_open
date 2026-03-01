@@ -98,8 +98,8 @@ add_subdirectory(svo_test_utils)
 add_subdirectory(svo_ceres_backend)
 
 if(SVO_BUILD_LOOP_CLOSING)
-  add_subdirectory(svo_online_loopclosing)
   add_subdirectory(svo_pgo)
+  add_subdirectory(svo_online_loopclosing)
 endif()
 
 add_subdirectory(svo)

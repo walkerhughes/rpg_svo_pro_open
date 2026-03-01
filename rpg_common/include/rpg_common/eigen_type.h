@@ -24,11 +24,7 @@ namespace rpg_common
   using Matrix8##SUFFIX = Eigen::Matrix<double, 8, SIZE>;                      \
   using Matrix9##SUFFIX = Eigen::Matrix<double, 9, SIZE>;                      \
   using Matrix##SUFFIX##X = Eigen::Matrix<double, SIZE, Eigen::Dynamic>;       \
-  using MatrixX##SUFFIX = Eigen::Matrix<double, Eigen::Dynamic, SIZE>;         \
-  static const Eigen::MatrixBase<Matrix##SUFFIX>::IdentityReturnType           \
-      I_##SUFFIX##x##SUFFIX = Matrix##SUFFIX::Identity();                      \
-  static const Eigen::MatrixBase<Matrix##SUFFIX>::ConstantReturnType           \
-      Z_##SUFFIX##x##SUFFIX = Matrix##SUFFIX::Zero()
+  using MatrixX##SUFFIX = Eigen::Matrix<double, Eigen::Dynamic, SIZE>
 
 ZE_MAKE_EIGEN_MATRIX_TYPEDEFS(1, 1);
 ZE_MAKE_EIGEN_MATRIX_TYPEDEFS(2, 2);

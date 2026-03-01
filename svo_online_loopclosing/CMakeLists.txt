@@ -16,5 +16,5 @@ target_include_directories(svo_online_loopclosing PUBLIC
 )
 target_link_libraries(svo_online_loopclosing
   PUBLIC Eigen3::Eigen Ceres::ceres svo_common svo_ceres_backend
-  PRIVATE svo_compiler_flags ${OpenCV_LIBS} glog::glog DBoW2
+  PRIVATE svo_compiler_flags ${OpenCV_LIBS} glog::glog $<BUILD_INTERFACE:DBoW2>
 )

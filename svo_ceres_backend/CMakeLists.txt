@@ -27,7 +27,7 @@ target_include_directories(svo_ceres_backend PUBLIC
   $<INSTALL_INTERFACE:include>
 )
 target_link_libraries(svo_ceres_backend
-  PUBLIC Eigen3::Eigen Ceres::ceres svo_common svo_vio_common opengv
+  PUBLIC Eigen3::Eigen Ceres::ceres svo_common svo_vio_common $<BUILD_INTERFACE:opengv>
   PRIVATE svo_compiler_flags ${OpenCV_LIBS} glog::glog yaml-cpp
 )
 

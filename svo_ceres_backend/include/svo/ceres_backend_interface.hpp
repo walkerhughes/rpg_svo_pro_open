@@ -223,6 +223,11 @@ public:
     *state = last_state_;
   }
 
+  void setMapUpdateEnabled(bool enabled) override
+  {
+    map_update_enabled_ = enabled;
+  }
+
   std::string getStationaryStatusStr() const;
 
 protected:
@@ -232,6 +237,7 @@ protected:
   std::unique_ptr<MotionDetector> motion_detector_;
   size_t no_motion_counter_;
   std::unique_ptr<OutlierRejection> outlier_rejection_;
+  bool map_update_enabled_ = true;
 
   /**
    * @brief Adds landmarks and observation of frame to the backend. Adding of

@@ -278,6 +278,14 @@ bool FrameHandlerBase::addFrameBundle(const FrameBundlePtr& frame_bundle)
                                                timestamp_backend_latest_);
     }
 
+    // Disable map updates (keyframe poses, landmark positions, outlier
+    // rejection) while monocular scale is still converging. The backend's
+    // IMU-visual optimization adjusts the arbitrary monocular scale to metric,
+    // which can move landmarks far from their front-end positions and cause
+    // SparseImgAlign to fail with "no features to track". States and IMU data
+    // are still added to the backend so it can converge in parallel.
+    bundle_adjustment_->setMapUpdateEnabled(backend_scale_initialized_);
+
     bundle_adjustment_->loadMapFromBundleAdjustment(new_frames_,
                                                     last_frames_, map_,
                                                     have_motion_prior_);
@@ -291,8 +299,9 @@ bool FrameHandlerBase::addFrameBundle(const FrameBundlePtr& frame_bundle)
     }
 
     //compute the distance between the last two keyframes after ba update
-    //Analyze scale change
-    if (map_->size() > 2)
+    //Analyze scale change. Only meaningful when map updates are enabled,
+    //since the scale change is always 0 when updates are disabled.
+    if (map_->size() > 2 && backend_scale_initialized_)
     {
       opt_dist_first_two_kfs = distanceFirstTwoKeyframes(*map_);
       const double scale_change =
@@ -324,10 +333,23 @@ bool FrameHandlerBase::addFrameBundle(const FrameBundlePtr& frame_bundle)
     //--- For scale initialization
     if (!backend_scale_initialized_)
     {
-      if (backend_scale_stable)
+      // Enable backend map updates once the backend has accumulated enough
+      // frames for IMU-visual scale convergence. Before this point, the
+      // front-end runs independently (like pure VO) while the backend
+      // converges in parallel. This prevents the backend's scale correction
+      // from destroying front-end landmarks during monocular initialization.
+      const int kMinBackendFrames = 5;
+      if (bundle_adjustment_->getNumFrames() >= kMinBackendFrames
+          && stage_ == Stage::kTracking)
       {
         backend_scale_initialized_ = true;
-        VLOG(2) << "backend scale initialized";
+        VLOG(2) << "backend scale initialized (backend has "
+                << bundle_adjustment_->getNumFrames() << " frames)";
+      }
+      else if (backend_scale_stable)
+      {
+        backend_scale_initialized_ = true;
+        VLOG(2) << "backend scale initialized (scale stable)";
       }
       else if (stage_ != Stage::kInitializing)
       {

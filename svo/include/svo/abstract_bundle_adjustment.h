@@ -88,6 +88,14 @@ public:
 
   virtual void getLastState(ViNodeState* state) const = 0;
 
+  /// Control whether the map update portion of loadMapFromBundleAdjustment
+  /// actually modifies keyframe poses, landmark positions, and runs outlier
+  /// rejection. When disabled, states and IMU data are still added to the
+  /// backend but the frontend map is not modified. Disable during monocular
+  /// scale initialization when the backend's scale correction would move
+  /// landmarks away from their front-end positions.
+  virtual void setMapUpdateEnabled(bool /*enabled*/) {}
+
 protected:
   BundleAdjustmentType type_ = BundleAdjustmentType::kNone;
 };

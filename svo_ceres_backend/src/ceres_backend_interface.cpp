@@ -100,9 +100,18 @@ void CeresBackendInterface::loadMapFromBundleAdjustment(
   {
     last_added_nframe_imu_ = new_frames->getBundleId();
 
-    // Obtain motion prior ---------------------------------------------------
-    updateBundleStateWithBackend(new_frames, true);
-    have_motion_prior = true;
+    // Obtain motion prior from backend. During monocular scale initialization,
+    // skip this to avoid overwriting the frame pose with a backend estimate
+    // at the wrong scale, which causes reprojection failures.
+    if (map_update_enabled_)
+    {
+      updateBundleStateWithBackend(new_frames, true);
+      have_motion_prior = true;
+    }
+    else
+    {
+      have_motion_prior = false;
+    }
   }
   else
   {
@@ -123,6 +132,16 @@ void CeresBackendInterface::loadMapFromBundleAdjustment(
   if (last_updated_nframe_ == last_optimized_nframe_.load())
   {
     VLOG(3) << "VIN: No map update available.";
+    return;
+  }
+
+  // Skip map update during monocular scale initialization. The backend's
+  // scale correction can move landmarks far from their front-end positions,
+  // causing SparseImgAlign to fail with "no features to track".
+  if (!map_update_enabled_)
+  {
+    VLOG(3) << "VIN: Map update disabled (scale initializing), skipping.";
+    last_updated_nframe_ = last_optimized_nframe_.load();
     return;
   }
 

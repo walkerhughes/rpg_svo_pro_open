@@ -15,6 +15,6 @@ target_include_directories(svo_online_loopclosing PUBLIC
   $<INSTALL_INTERFACE:include>
 )
 target_link_libraries(svo_online_loopclosing
-  PUBLIC Eigen3::Eigen Ceres::ceres svo_common svo_ceres_backend svo_pgo rpg_common vikit_common vikit_cameras
-  PRIVATE svo_compiler_flags ${OpenCV_LIBS} glog::glog $<BUILD_INTERFACE:DBoW2>
+  PUBLIC Eigen3::Eigen Ceres::ceres svo_common svo_ceres_backend svo_pgo rpg_common vikit_common vikit_cameras $<BUILD_INTERFACE:DBoW2>
+  PRIVATE svo_compiler_flags ${OpenCV_LIBS} glog::glog
 )

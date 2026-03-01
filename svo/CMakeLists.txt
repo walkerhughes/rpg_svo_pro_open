@@ -18,8 +18,8 @@ target_include_directories(svo PUBLIC
   $<INSTALL_INTERFACE:include>
 )
 target_link_libraries(svo
-  PUBLIC Eigen3::Eigen svo_common svo_direct svo_img_align svo_tracker svo_vio_common svo_ceres_backend rpg_common vikit_solver vikit_cameras
-  PRIVATE svo_compiler_flags ${OpenCV_LIBS} glog::glog yaml-cpp
+  PUBLIC Eigen3::Eigen svo_common svo_direct svo_img_align svo_tracker svo_vio_common svo_ceres_backend rpg_common vikit_solver vikit_cameras svo_compiler_flags
+  PRIVATE ${OpenCV_LIBS} glog::glog yaml-cpp
 )
 if(SVO_BUILD_LOOP_CLOSING)
   target_link_libraries(svo PUBLIC svo_online_loopclosing svo_pgo PRIVATE $<BUILD_INTERFACE:DBoW2>)

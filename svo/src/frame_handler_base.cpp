@@ -199,7 +199,7 @@ bool FrameHandlerBase::addImageBundle(const std::vector<cv::Mat>& imgs, const ui
 //------------------------------------------------------------------------------
 bool FrameHandlerBase::addFrameBundle(const FrameBundlePtr& frame_bundle)
 {
-  VLOG(40) << "New Frame Bundle received: " << frame_bundle->getBundleId();  
+  VLOG(40) << "New Frame Bundle received: " << frame_bundle->getBundleId();
   CHECK_EQ(frame_bundle->size(), cams_->numCameras());
 
   // ---------------------------------------------------------------------------

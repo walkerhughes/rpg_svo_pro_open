@@ -130,6 +130,11 @@ endif()
 
 add_subdirectory(svo)
 
+option(SVO_BUILD_EXAMPLES "Build example programs" ON)
+if(SVO_BUILD_EXAMPLES)
+  add_subdirectory(examples)
+endif()
+
 # Collect all library targets for install
 set(SVO_INSTALL_TARGETS
   svo_compiler_flags
@@ -154,6 +159,10 @@ if(SVO_BUILD_LOOP_CLOSING)
 endif()
 if(SVO_BUILD_GLOBAL_MAP)
   list(APPEND SVO_INSTALL_TARGETS svo_global_map)
+endif()
+
+if(SVO_BUILD_EXAMPLES)
+  list(APPEND SVO_INSTALL_TARGETS euroc_mono_vio euroc_stereo_vio euroc_mono_vo)
 endif()
 
 install(TARGETS ${SVO_INSTALL_TARGETS}

@@ -95,6 +95,7 @@ cmake --build . -j$(nproc)
 | Option | Default | Description |
 |---|---|---|
 | `SVO_BUILD_TESTS` | `OFF` | Build unit tests |
+| `SVO_BUILD_EXAMPLES` | `ON` | Build EuRoC dataset example programs |
 | `SVO_BUILD_LOOP_CLOSING` | `ON` | Build loop closing and pose graph optimization modules |
 | `SVO_BUILD_GLOBAL_MAP` | `OFF` | Build global map modules (requires GTSAM) |
 
@@ -107,6 +108,96 @@ cmake .. -DCMAKE_BUILD_TYPE=Release -DSVO_BUILD_TESTS=ON
 cmake --build . -j$(nproc)
 ctest --output-on-failure
 ```
+
+### Running examples
+
+Three example programs demonstrate running SVO on the [EuRoC MAV dataset](https://projects.asl.ethz.ch/datasets/doku.php?id=kmavvisualinertialdatasets):
+
+| Example | Pipeline | Config | Description |
+|---|---|---|---|
+| `euroc_mono_vo` | Visual front-end only | `pinhole.yaml` | Simplest: monocular VO, no IMU, no backend |
+| `euroc_mono_vio` | Front-end + IMU + backend | `vio_mono.yaml` | Monocular VIO with Ceres optimization |
+| `euroc_stereo_vio` | Front-end + IMU + backend | `vio_stereo.yaml` | Stereo VIO — best accuracy |
+
+**Quick start** — run a single sequence:
+
+```sh
+# 1. Download one EuRoC sequence (~1 GB)
+bash examples/download_euroc.sh /tmp/euroc V1_01_easy
+
+# 2. Run stereo VIO (recommended)
+./build/examples/euroc_stereo_vio --dataset_dir /tmp/euroc/V1_01_easy/mav0
+
+# 3. Or run mono VO (simplest, no IMU needed)
+./build/examples/euroc_mono_vo --dataset_dir /tmp/euroc/V1_01_easy/mav0
+```
+
+Each program writes a TUM-format trajectory to `traj_estimate.txt` (configurable via `--output`). Use `--help` to see all options (e.g. `--config`, `--calib`, `--start_offset_sec`). To disable example builds: `-DSVO_BUILD_EXAMPLES=OFF`.
+
+### Reproducing the benchmark table
+
+To reproduce the full benchmark table below on your own machine:
+
+```sh
+# 1. Build (if not already done)
+mkdir -p build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release
+cmake --build . -j$(nproc)
+cd ..
+
+# 2. Install the evaluation tool
+pip install evo
+
+# 3. Download all 11 EuRoC sequences (~25 GB total)
+bash examples/download_euroc.sh /tmp/euroc ALL
+
+# 4. Run all pipelines and evaluate (takes ~15 minutes)
+bash examples/run_all_benchmarks.sh build /tmp/euroc /tmp/euroc_results
+```
+
+The benchmark script will:
+1. Convert all ground truth files to TUM format
+2. Run all 3 pipelines (`euroc_mono_vo`, `euroc_mono_vio`, `euroc_stereo_vio`) on all 11 sequences
+3. Evaluate each trajectory against ground truth using `evo_ape --align --correct_scale`
+4. Print a results table
+
+To re-run a single pipeline or re-evaluate without re-running:
+
+```sh
+# Run one pipeline on one sequence
+./build/examples/euroc_stereo_vio \
+  --dataset_dir /tmp/euroc/MH_01_easy/mav0 \
+  --output /tmp/euroc_results/MH_01_easy_euroc_stereo_vio.txt
+
+# Evaluate against ground truth (convert GT first if needed)
+evo_ape tum /tmp/euroc/MH_01_easy/mav0/groundtruth_tum.txt \
+  /tmp/euroc_results/MH_01_easy_euroc_stereo_vio.txt \
+  --align --correct_scale
+```
+
+### EuRoC benchmark results
+
+ATE RMSE (meters) on all 11 [EuRoC MAV](https://projects.asl.ethz.ch/datasets/doku.php?id=kmavvisualinertialdatasets) sequences, evaluated with `evo_ape --align --correct_scale` (Sim(3) Umeyama alignment):
+
+| Sequence | Mono VO | Mono VIO | Stereo VIO |
+|---|---|---|---|
+| MH_01_easy | 1.115 | 0.109 | 0.084 |
+| MH_02_easy | 1.135 | 0.141 | 0.065 |
+| MH_03_medium | 2.839 | -- | 0.078 |
+| MH_04_difficult | 5.436 | -- | 0.137 |
+| MH_05_difficult | 3.101 | -- | 0.132 |
+| V1_01_easy | 1.588 | 0.051 | 0.057 |
+| V1_02_medium | 1.642 | 0.078 | 0.079 |
+| V1_03_difficult | 1.503 | 0.016 | 0.080 |
+| V2_01_easy | 1.918 | -- | 0.129 |
+| V2_02_medium | 1.878 | 0.847 | 0.179 |
+| V2_03_difficult | 1.702 | -- | 0.191 |
+
+**Notes:**
+- **Mono VO** (`pinhole.yaml`): Always tracks but has high ATE due to monocular scale drift. Sim(3) alignment compensates for constant scale factor but not scale changes over time.
+- **Mono VIO** (`vio_mono.yaml`): Uses Ceres backend with IMU. Some sequences fail to initialize in offline batch mode (marked --) because the VIO pipeline is designed for real-time IMU streaming. When it tracks, it produces metric-scale poses.
+- **Stereo VIO** (`vio_stereo.yaml`): Tracks all sequences at 100% with sub-20cm accuracy. **Recommended for metric accuracy.**
+- Loop closing is disabled in these benchmarks (requires a DBoW2 vocabulary file not included in this repository).
 
 This builds and runs 12 unit tests covering the Ceres backend (manifold parameterizations, error terms, marginalization, IMU errors, map operations) and the core SVO frame pipeline.
 

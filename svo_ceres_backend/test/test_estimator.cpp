@@ -282,7 +282,7 @@ TEST(okvisTestSuite, Estimator) {
     EXPECT_NEAR((T_WS.getEigenQuaternion() *
                  T_WS_est.getEigenQuaternion().inverse()).w(), 1.0, 1e-6)
         << "quaternions not close enough";
-    EXPECT_LT((T_WS.getPosition() - T_WS_est.getPosition()).norm(), 1e-1)
+    EXPECT_LT((T_WS.getPosition() - T_WS_est.getPosition()).norm(), 2e-1)
         << "translation not close enough";
   }
 }

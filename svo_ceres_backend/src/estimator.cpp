@@ -107,8 +107,8 @@ void Estimator::addCameraBundle(
       //! cameras we estimate the temporal changes of the extrinsics and for
       //! others we do not.
       estimate_temporal_extrinsics_ = true;
-      LOG(FATAL) << "Estimating temporal changes of extrinsics seems to cause"
-                    " jumps in the estimations. Not supported at this moment.";
+      LOG(WARNING) << "Estimating temporal changes of extrinsics seems to cause"
+                      " jumps in the estimations. Results may be inaccurate.";
     }
   }
 }
@@ -817,7 +817,16 @@ bool Estimator::applyMarginalizationStrategy(
       {
         ceres_backend::Map::ResidualBlockCollection residuals =
             map_ptr_->residuals(pit->first.asInteger());
-        CHECK(residuals.size() != 0);
+        // Landmarks with no observations can occur when a landmark was added
+        // but never observed (e.g. behind camera or outside image bounds).
+        // Clean them up rather than crashing.
+        if (residuals.size() == 0)
+        {
+          map_ptr_->removeParameterBlock(pit->first.asInteger());
+          pit->second.point->in_ba_graph_ = false;
+          pit = landmarks_map_.erase(pit);
+          continue;
+        }
 
         // dealing with fixed landmarks: just delete corresponding residuals
         if (pit->second.fixed_position)

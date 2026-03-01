@@ -22,7 +22,7 @@ target_link_libraries(svo
   PRIVATE svo_compiler_flags ${OpenCV_LIBS} glog::glog yaml-cpp
 )
 if(SVO_BUILD_LOOP_CLOSING)
-  target_link_libraries(svo PUBLIC svo_online_loopclosing svo_pgo)
+  target_link_libraries(svo PUBLIC svo_online_loopclosing svo_pgo PRIVATE DBoW2)
 endif()
 if(SVO_BUILD_GLOBAL_MAP)
   target_link_libraries(svo PUBLIC svo_global_map)

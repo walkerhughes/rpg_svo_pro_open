@@ -63,6 +63,16 @@ int main(int argc, char** argv)
     LOG(INFO) << "Loop closing disabled (vocabulary not available)";
   }
 
+  // Lower the initialization disparity threshold for offline processing.
+  // In slow-motion sequences (e.g. V2_01), features decay before reaching
+  // the default threshold of 30px. Triggering initialization earlier at 20px
+  // disparity ensures enough features survive for robust FivePoint RANSAC.
+  if (!config["init_min_disparity"] ||
+      config["init_min_disparity"].as<double>() > 25.0)
+  {
+    config["init_min_disparity"] = 25.0;
+  }
+
   // 2. Create pipeline
   auto svo = svo::factory::makeMono(config);
   CHECK(svo) << "Failed to create mono pipeline";

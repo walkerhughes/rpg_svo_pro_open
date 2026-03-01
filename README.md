@@ -182,20 +182,20 @@ ATE RMSE (meters) on all 11 [EuRoC MAV](https://projects.asl.ethz.ch/datasets/do
 | Sequence | Mono VO | Mono VIO | Stereo VIO |
 |---|---|---|---|
 | MH_01_easy | 1.115 | 3.408 | 0.097 |
-| MH_02_easy | 1.135 | 3.847 | 0.063 |
-| MH_03_medium | 2.839 | 3.330 | 0.090 |
-| MH_04_difficult | 5.436 | 6.505 | 0.125 |
-| MH_05_difficult | 3.101 | 6.584 | 0.132 |
-| V1_01_easy | 1.588 | 1.787 | 0.055 |
-| V1_02_medium | 1.642 | 1.730 | 0.075 |
-| V1_03_difficult | 1.503 | 0.145 | 0.059 |
-| V2_01_easy | 1.918 | -- | 0.092 |
-| V2_02_medium | 1.878 | 0.432 | 0.109 |
-| V2_03_difficult | 1.702 | 0.276 | 0.153 |
+| MH_02_easy | 1.135 | 3.964 | 0.063 |
+| MH_03_medium | 2.839 | 3.327 | 0.090 |
+| MH_04_difficult | 5.436 | 6.510 | 0.125 |
+| MH_05_difficult | 3.101 | 6.687 | 0.132 |
+| V1_01_easy | 1.588 | 1.793 | 0.055 |
+| V1_02_medium | 1.642 | 1.726 | 0.075 |
+| V1_03_difficult | 1.503 | 0.144 | 0.059 |
+| V2_01_easy | 1.918 | 2.289 | 0.092 |
+| V2_02_medium | 1.878 | 0.431 | 0.109 |
+| V2_03_difficult | 1.702 | 0.859 | 0.153 |
 
 **Notes:**
 - **Mono VO** (`pinhole.yaml`): Always tracks (91-98%) but has high ATE due to monocular scale drift.
-- **Mono VIO** (`vio_mono.yaml`): Uses Ceres backend with IMU. Tracks 10/11 sequences. V2_01 fails to initialize in offline mode (marked --). Accuracy varies by sequence; the backend's scale convergence takes a few frames.
+- **Mono VIO** (`vio_mono.yaml`): Uses Ceres backend with IMU. Tracks all 11 sequences. Accuracy varies; the backend's monocular scale convergence takes a few frames, during which the front-end runs independently.
 - **Stereo VIO** (`vio_stereo.yaml`): Tracks all 11 sequences at 100% with sub-20cm accuracy. **Recommended for metric accuracy.**
 - Loop closing is disabled in these benchmarks (requires a DBoW2 vocabulary file not included in this repository).
 

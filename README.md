@@ -105,6 +105,35 @@ cmake --build . -j$(nproc)
 ctest --output-on-failure
 ```
 
+#### Building with global map (GTSAM)
+
+The global map module requires [GTSAM](https://gtsam.org/) 4.2. GTSAM is not available via Homebrew and is incompatible with Eigen 5, so it must be built from source with its bundled Eigen 3:
+
+```sh
+git clone -b 4.2 --depth 1 https://github.com/borglab/gtsam.git
+cd gtsam && cmake -P /path/to/rpg_svo_pro_open/cmake/PatchGtsamBoost.cmake
+cd .. && cmake -S gtsam -B gtsam/build \
+  -DGTSAM_USE_SYSTEM_EIGEN=OFF \
+  -DGTSAM_BUILD_TESTS=OFF \
+  -DGTSAM_BUILD_EXAMPLES_ALWAYS=OFF \
+  -DGTSAM_BUILD_UNSTABLE=OFF \
+  -DGTSAM_BUILD_PYTHON=OFF \
+  -DGTSAM_WITH_TBB=OFF \
+  -DCMAKE_INSTALL_PREFIX=/usr/local
+cmake --build gtsam/build -j$(nproc)
+sudo cmake --install gtsam/build
+```
+
+> **Note:** The `PatchGtsamBoost.cmake` script removes the `boost_system` library requirement, which became header-only in Boost >= 1.69. Run it from the GTSAM source root before building. If your Boost still ships `libboost_system`, you can skip this step.
+
+Then build SVO with the global map:
+
+```sh
+cmake .. -DCMAKE_BUILD_TYPE=Release -DSVO_BUILD_GLOBAL_MAP=ON \
+  -DGTSAM_DIR=/usr/local/lib/cmake/GTSAM
+cmake --build . -j$(nproc)
+```
+
 ### Using SVO as a library
 
 After building, SVO can be installed and consumed by other CMake projects:

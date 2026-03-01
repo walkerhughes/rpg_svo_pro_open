@@ -14,6 +14,6 @@ target_include_directories(svo_global_map PUBLIC
   $<INSTALL_INTERFACE:include>
 )
 target_link_libraries(svo_global_map
-  PUBLIC Eigen3::Eigen svo_common svo_ceres_backend vikit_cameras $<BUILD_INTERFACE:gtsam>
-  PRIVATE svo_compiler_flags glog::glog
+  PUBLIC Eigen3::Eigen svo_common svo_ceres_backend vikit_cameras rpg_common
+  PRIVATE svo_compiler_flags glog::glog gtsam
 )

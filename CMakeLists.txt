@@ -80,23 +80,24 @@ if(NOT DBoW2_FOUND)
 endif()
 
 # GTSAM (optional, for global map)
+# Note: GTSAM 4.2 is incompatible with Eigen 5 (Homebrew default).
+# If your system has Eigen 5, install GTSAM from source with -DGTSAM_USE_SYSTEM_EIGEN=OFF
+# so it uses its bundled Eigen 3, then set -DGTSAM_DIR=<install>/lib/cmake/GTSAM.
 if(SVO_BUILD_GLOBAL_MAP)
   find_package(GTSAM QUIET)
   if(NOT GTSAM_FOUND)
-    find_package(Boost REQUIRED)
-    set(GTSAM_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-    set(GTSAM_BUILD_EXAMPLES_ALWAYS OFF CACHE BOOL "" FORCE)
-    set(GTSAM_BUILD_UNSTABLE OFF CACHE BOOL "" FORCE)
-    set(GTSAM_BUILD_PYTHON OFF CACHE BOOL "" FORCE)
-    set(GTSAM_INSTALL_MATLAB_TOOLBOX OFF CACHE BOOL "" FORCE)
-    set(GTSAM_WITH_TBB OFF CACHE BOOL "" FORCE)
-    set(GTSAM_USE_SYSTEM_EIGEN ON CACHE BOOL "" FORCE)
-    FetchContent_Declare(gtsam
-      GIT_REPOSITORY https://github.com/borglab/gtsam.git
-      GIT_TAG        4.2
-      GIT_SHALLOW    TRUE
-    )
-    FetchContent_MakeAvailable(gtsam)
+    message(FATAL_ERROR
+      "SVO_BUILD_GLOBAL_MAP=ON requires GTSAM but it was not found.\n"
+      "GTSAM 4.2 is incompatible with Eigen 5 (e.g. Homebrew's default). "
+      "Build GTSAM from source with its bundled Eigen:\n"
+      "  git clone -b 4.2 --depth 1 https://github.com/borglab/gtsam.git\n"
+      "  cmake -S gtsam -B gtsam/build -DGTSAM_USE_SYSTEM_EIGEN=OFF "
+      "-DGTSAM_BUILD_TESTS=OFF -DGTSAM_BUILD_EXAMPLES_ALWAYS=OFF "
+      "-DGTSAM_BUILD_UNSTABLE=OFF -DGTSAM_BUILD_PYTHON=OFF "
+      "-DGTSAM_WITH_TBB=OFF -DCMAKE_INSTALL_PREFIX=/usr/local\n"
+      "  cmake --build gtsam/build -j && cmake --install gtsam/build\n"
+      "Then re-run cmake with -DGTSAM_DIR=/usr/local/lib/cmake/GTSAM\n"
+      "To build without global map support, use -DSVO_BUILD_GLOBAL_MAP=OFF (the default).")
   endif()
 endif()
 

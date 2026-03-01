@@ -1,5 +1,10 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.16...4.1)
 project(svo_pro VERSION 1.0.0 LANGUAGES CXX)
+
+# Allow fetched dependencies with old cmake_minimum_required (opengv 3.1, DBoW2 3.0).
+# Without this, CMake >= 4.0 rejects cmake_minimum_required(VERSION < 3.5).
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5 CACHE STRING
+  "Minimum policy version for compatibility with old third-party CMakeLists")
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

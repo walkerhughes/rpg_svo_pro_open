@@ -278,13 +278,9 @@ bool FrameHandlerBase::addFrameBundle(const FrameBundlePtr& frame_bundle)
                                                timestamp_backend_latest_);
     }
 
-    // Disable map updates (keyframe poses, landmark positions, outlier
-    // rejection) while monocular scale is still converging. The backend's
-    // IMU-visual optimization adjusts the arbitrary monocular scale to metric,
-    // which can move landmarks far from their front-end positions and cause
-    // SparseImgAlign to fail with "no features to track". States and IMU data
-    // are still added to the backend so it can converge in parallel.
-    bundle_adjustment_->setMapUpdateEnabled(backend_scale_initialized_);
+    // Map updates are always enabled. The spin-wait in offline processing
+    // ensures the backend processes each frame before the next arrives,
+    // keeping estimates current and allowing gradual scale convergence.
 
     bundle_adjustment_->loadMapFromBundleAdjustment(new_frames_,
                                                     last_frames_, map_,

@@ -22,6 +22,7 @@
 #include <svo/imu_handler.h>
 #include <svo/ceres_backend_factory.h>
 #include <svo/ceres_backend_interface.hpp>
+#include <svo/vio_common/backend_types.hpp>
 
 #ifdef SVO_LOOP_CLOSING
 #include <svo/online_loopclosing/loop_closing.h>
@@ -123,6 +124,7 @@ int main(int argc, char** argv)
 
   size_t n_processed = 0;
   size_t n_tracked = 0;
+  size_t n_backend = 0;
   double total_time = 0.0;
 
   // 10. Main loop
@@ -147,16 +149,29 @@ int main(int argc, char** argv)
     n_processed++;
     total_time += svo->lastProcessingTime();
 
-    // Write trajectory if tracking
+    // Wait for backend to finish optimizing this frame
+    if (svo->getBundleAdjuster() && svo->getLastFrames())
+    {
+      const auto& ba = svo->getBundleAdjuster();
+      while (ba->lastOptimizedBundleId() < svo->getLastFrames()->getBundleId())
+        ;
+    }
+
+    // Write trajectory if tracking — use backend-optimized pose when available
     if (svo->stage() == svo::Stage::kTracking)
     {
       n_tracked++;
-      auto last_frames = svo->getLastFrames();
-      if (last_frames)
+      double ts_sec = static_cast<double>(ts_ns) * 1e-9;
+      if (svo->getBundleAdjuster() && svo->isBackendScaleInitialised())
       {
-        svo::Transformation T_W_B = last_frames->get_T_W_B();
-        double ts_sec = static_cast<double>(ts_ns) * 1e-9;
-        svo::euroc::saveTumTrajectory(traj_ofs, ts_sec, T_W_B);
+        n_backend++;
+        svo::ViNodeState vi_state;
+        svo->getBundleAdjuster()->getLastState(&vi_state);
+        svo::euroc::saveTumTrajectory(traj_ofs, ts_sec, vi_state.get_T_W_B());
+      }
+      else if (auto lf = svo->getLastFrames())
+      {
+        svo::euroc::saveTumTrajectory(traj_ofs, ts_sec, lf->get_T_W_B());
       }
     }
 
@@ -176,6 +191,9 @@ int main(int argc, char** argv)
   LOG(INFO) << "Frames processed: " << n_processed;
   LOG(INFO) << "Frames tracked:   " << n_tracked
             << " (" << (n_processed > 0 ? 100.0 * n_tracked / n_processed : 0)
+            << "%)";
+  LOG(INFO) << "Backend poses used: " << n_backend
+            << " (" << (n_tracked > 0 ? 100.0 * n_backend / n_tracked : 0)
             << "%)";
   LOG(INFO) << "Avg processing time: "
             << (n_processed > 0 ? 1000.0 * total_time / n_processed : 0)
